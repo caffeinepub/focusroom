@@ -1,0 +1,25 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-rewrite-the-camera-toggle-logic-in-frontend-src-components-room-camerapreview-tsx-from-scratch-when-the-user-clicks-the-camera-toggle-button-the-handler-must-1-stop-any-existing-media-stream-tracks-first-2-call-navigator-mediadevices-getusermedia-video-true-audio-false-directly-and-immediately-with-no-prior-async-calls-no-enumeratedevices-no-device-filtering-and-no-feature-detection-guards-that-could-silently-abort-the-call-3-on-success-assign-the-stream-to-the-video-element-ref-via-videoref-current-srcobject-and-call-videoref-current-play-4-on-failure-catch-the-error-set-an-error-state-string-and-display-a-human-readable-message-to-the-user-e-g-camera-access-was-denied-please-allow-camera-access-in-your-browser-settings-and-try-again-apply-a-permanent-css-blur-filter-blur-12px-with-brightness-contrast-to-the-video-element-via-inline-style-or-a-dedicated-css-class-never-conditionally-remove-the-blur-ensure-the-component-properly-cleans-up-the-media-stream-stops-all-tracks-on-unmount-remove-all-legacy-code-paths-from-previous-fix-attempts-enumeratedevices-checks-overconstrained-retries-deviceid-constraints-that-may-be-preventing-the-native-browser-permission-popup-from-appearing",
+      "featureTitle": "Rewrite the camera toggle logic in `frontend/src/components/room/CameraPreview.tsx` from scratch. When the user clicks the camera toggle button, the handler must: (1) stop any existing media stream tracks first; (2) call `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` directly and immediately — with no prior async calls, no `enumerateDevices()`, no device filtering, and no feature-detection guards that could silently abort the call; (3) on success, assign the stream to the video element ref via `videoRef.current.srcObject` and call `videoRef.current.play()`; (4) on failure, catch the error, set an error state string, and display a human-readable message to the user (e.g. 'Camera access was denied. Please allow camera access in your browser settings and try again.'). Apply a permanent CSS blur filter (`blur(12px)` with brightness/contrast) to the `<video>` element via inline style or a dedicated CSS class — never conditionally remove the blur. Ensure the component properly cleans up the media stream (stops all tracks) on unmount. Remove all legacy code paths from previous fix attempts (enumerateDevices checks, overconstrained retries, deviceId constraints) that may be preventing the native browser permission popup from appearing.",
+      "files": [
+        "frontend/src/components/room/CameraPreview.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "camera@1.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-18"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

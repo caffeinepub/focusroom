@@ -1,0 +1,37 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-25T20:44:49.377Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 1,
+    "implemented": 1,
+    "items": [
+      {
+        "id": "REQ-18",
+        "summary": "Rewrite the camera toggle logic in `frontend/src/components/room/CameraPreview.tsx` from scratch. When the user clicks the camera toggle button, the handler must: (1) stop any existing media stream tracks first; (2) call `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` directly and immediately — with no prior async calls, no `enumerateDevices()`, no device filtering, and no feature-detection guards that could silently abort the call; (3) on success, assign the stream to the video element ref via `videoRef.current.srcObject` and call `videoRef.current.play()`; (4) on failure, catch the error, set an error state string, and display a human-readable message to the user (e.g. 'Camera access was denied. Please allow camera access in your browser settings and try again.'). Apply a permanent CSS blur filter (`blur(12px)` with brightness/contrast) to the `<video>` element via inline style or a dedicated CSS class — never conditionally remove the blur. Ensure the component properly cleans up the media stream (stops all tracks) on unmount. Remove all legacy code paths from previous fix attempts (enumerateDevices checks, overconstrained retries, deviceId constraints) that may be preventing the native browser permission popup from appearing.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/room/CameraPreview.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/room/CameraPreview.tsx"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/components/room/CameraPreview.tsx",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}

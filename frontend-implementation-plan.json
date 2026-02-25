@@ -1,0 +1,27 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Fix camera access in CameraPreview (v5 attempt)",
+  "requirements": [
+    {
+      "id": "REQ-18",
+      "summary": "Rewrite camera toggle logic in CameraPreview to trigger native browser permission popup and display blurred video feed",
+      "acceptanceCriteria": [
+        "Clicking the camera toggle button triggers the browser's native camera permission popup on first use.",
+        "After granting permission, the blurred video feed appears in the participant tile.",
+        "The blur filter is always applied and cannot be removed by any UI action.",
+        "If the user denies permission, a clear error message is shown inside the CameraPreview component.",
+        "No `enumerateDevices()` call or any async pre-check precedes the `getUserMedia` call.",
+        "The media stream is fully stopped and released when the component unmounts or the camera is toggled off.",
+        "The component works correctly across Chrome, Firefox, and Safari."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/room/CameraPreview.tsx",
+          "operation": "modify",
+          "description": "Rewrite the camera toggle logic from scratch. Remove all legacy code paths (enumerateDevices checks, overconstrained retries, deviceId constraints). Implement a simple camera handler that: (1) stops any existing media stream tracks first; (2) immediately calls `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` with no prior async calls or feature-detection guards; (3) on success, assigns the stream to `videoRef.current.srcObject` and calls `videoRef.current.play()`; (4) on failure, catches the error, sets an error state string, and displays a human-readable message ('Camera access was denied. Please allow camera access in your browser settings and try again.'). Apply a permanent CSS blur filter (`blur(12px)` with brightness/contrast adjustments) to the `<video>` element via inline style or a dedicated CSS class that is never conditionally removed. Ensure proper cleanup of media streams (stop all tracks) on component unmount using a useEffect cleanup function. Verify the camera component's usage instructions before implementing."
+        }
+      ]
+    }
+  ]
+}

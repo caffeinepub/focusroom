@@ -1,0 +1,43 @@
+{
+  "kind": "build_request",
+  "title": "Fix camera access in CameraPreview (v5 attempt)",
+  "priority": "high",
+  "requirements": [
+    {
+      "id": "REQ-18",
+      "text": "Rewrite the camera toggle logic in `frontend/src/components/room/CameraPreview.tsx` from scratch. When the user clicks the camera toggle button, the handler must: (1) stop any existing media stream tracks first; (2) call `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` directly and immediately — with no prior async calls, no `enumerateDevices()`, no device filtering, and no feature-detection guards that could silently abort the call; (3) on success, assign the stream to the video element ref via `videoRef.current.srcObject` and call `videoRef.current.play()`; (4) on failure, catch the error, set an error state string, and display a human-readable message to the user (e.g. 'Camera access was denied. Please allow camera access in your browser settings and try again.'). Apply a permanent CSS blur filter (`blur(12px)` with brightness/contrast) to the `<video>` element via inline style or a dedicated CSS class — never conditionally remove the blur. Ensure the component properly cleans up the media stream (stops all tracks) on unmount. Remove all legacy code paths from previous fix attempts (enumerateDevices checks, overconstrained retries, deviceId constraints) that may be preventing the native browser permission popup from appearing.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "Camera still not working :("
+        ]
+      },
+      "acceptanceCriteria": [
+        "Clicking the camera toggle button triggers the browser's native camera permission popup on first use.",
+        "After granting permission, the blurred video feed appears in the participant tile.",
+        "The blur filter is always applied and cannot be removed by any UI action.",
+        "If the user denies permission, a clear error message is shown inside the CameraPreview component.",
+        "No `enumerateDevices()` call or any async pre-check precedes the `getUserMedia` call.",
+        "The media stream is fully stopped and released when the component unmounts or the camera is toggled off.",
+        "The component works correctly across Chrome, Firefox, and Safari."
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not modify any files under frontend/src/hooks/ that are listed as immutable (useInternetIdentity.ts, useActor.ts).",
+    "Do not change any backend files.",
+    "The blur filter on the camera feed must remain permanent — no mechanism to remove it."
+  ],
+  "nonGoals": [
+    "Adding audio capture or WebRTC peer-to-peer video streaming.",
+    "Changing the visual design or layout of the RoomPage.",
+    "Modifying timer, chat, or goal features."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

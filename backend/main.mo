@@ -1,0 +1,217 @@
+import Map "mo:core/Map";
+import Set "mo:core/Set";
+import Text "mo:core/Text";
+import Runtime "mo:core/Runtime";
+import Time "mo:core/Time";
+import Principal "mo:core/Principal";
+import List "mo:core/List";
+
+import MixinAuthorization "authorization/MixinAuthorization";
+import AccessControl "authorization/access-control";
+
+// This with-clause applies the data migration function in migration.mo
+
+actor {
+  type Event = {
+    name : Text;
+    date : Time.Time;
+    phase : ?Phase;
+  };
+
+  type RoomId = Text;
+  type UniqueCode = Text;
+
+  type Session = {
+    startTime : Time.Time;
+    phase : Phase;
+    isPause : Bool;
+  };
+
+  type Room = {
+    id : RoomId;
+    creator : Principal;
+  };
+
+  type Participant = {
+    principal : Principal;
+    username : Text;
+  };
+
+  type Phase = {
+    #focus;
+    #pause;
+  };
+
+  type RoomState = {
+    var participants : Set.Set<Principal>;
+    var session : ?Session;
+    creator : Principal;
+  };
+
+  public type UserProfile = {
+    username : Text;
+  };
+
+  // Authorization
+  let accessControlState = AccessControl.initState();
+  include MixinAuthorization(accessControlState);
+
+  let rooms = Map.empty<RoomId, RoomState>();
+  let userProfiles = Map.empty<Principal, UserProfile>();
+  let events = Map.empty<UniqueCode, Event>();
+  let roomsReverseIndex = Map.empty<UniqueCode, RoomId>();
+
+  let joinedRoomsList = List.empty<RoomId>();
+  let burntRoomsList = List.empty<RoomId>();
+
+  // --- User Profile Functions (required by instructions) ---
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get their profile");
+    };
+    userProfiles.get(caller);
+  };
+
+  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own profile");
+    };
+    userProfiles.get(user);
+  };
+
+  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can save profiles");
+    };
+    userProfiles.add(caller, profile);
+  };
+
+  // --- Room Functions ---
+  public shared ({ caller }) func createRoom() : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create rooms");
+    };
+
+    let code = generateUniqueCode();
+
+    let roomState : RoomState = {
+      var participants = Set.empty<Principal>();
+      var session = null;
+      creator = caller;
+    };
+
+    rooms.add(code, roomState);
+    roomsReverseIndex.add(code, code);
+    code;
+  };
+
+  public shared ({ caller }) func joinRoom(code : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can join rooms");
+    };
+
+    let roomState = switch (rooms.get(code)) {
+      case (null) { Runtime.trap("Room not found") };
+      case (?state) { state };
+    };
+
+    roomState.participants.add(caller);
+  };
+
+  // Any participant can start a session. Timer becomes independent of host.
+  public shared ({ caller }) func startSession(code : Text, phase : Phase) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can start sessions");
+    };
+
+    switch (rooms.get(code)) {
+      case (null) { Runtime.trap("Room not found") };
+      case (?roomState) {
+        roomState.session := ?{
+          startTime = Time.now();
+          phase;
+          isPause = false;
+        };
+      };
+    };
+  };
+
+  public query ({ caller }) func getTimerState(code : Text) : async ?Session {
+    // Timer state is now accessible to anyone in the room, not just the host.
+    switch (rooms.get(code)) {
+      case (null) { null };
+      case (?state) { state.session };
+    };
+  };
+
+  // --- Category/Navigation Functions ---
+  public query ({ caller }) func getCurrentCategory() : async ?RoomId {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access room navigation");
+    };
+    ?joinedRoomsList.at(0);
+  };
+
+  public query ({ caller }) func getPreviousCategories() : async [RoomId] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access room navigation");
+    };
+    if (joinedRoomsList.size() == 0) {
+      [];
+    } else {
+      let iter = joinedRoomsList.values();
+      let tempList = List.empty<RoomId>();
+      var isFirst = true;
+      for (roomId in iter) {
+        if (isFirst) {
+          isFirst := false;
+        } else {
+          tempList.add(roomId);
+        };
+      };
+      tempList.toArray();
+    };
+  };
+
+  public query ({ caller }) func getBurntCategories() : async [RoomId] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access room navigation");
+    };
+    burntRoomsList.toArray();
+  };
+
+  // --- Event Functions ---
+  public shared ({ caller }) func storeEvent(name : Text, phase : ?Phase, date : Time.Time) : async UniqueCode {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can store events");
+    };
+
+    let event : Event = {
+      name;
+      date;
+      phase;
+    };
+
+    let uniqueCode = generateUniqueCode();
+    events.add(uniqueCode, event);
+    uniqueCode;
+  };
+
+  // --- Helper Functions ---
+  func generateUniqueCode() : UniqueCode {
+    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let charArray = chars.toArray();
+    let size = charArray.size();
+    let t = Time.now();
+    var seed = Int.abs(t);
+    var code = "";
+    var i = 0;
+    while (i < 6) {
+      let idx = seed % size;
+      seed := seed / size + (seed * 6364136223846793005 + 1442695040888963407);
+      code := code # Text.fromChar(charArray[idx]);
+      i += 1;
+    };
+    code;
+  };
+};
