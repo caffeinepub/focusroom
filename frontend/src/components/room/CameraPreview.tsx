@@ -17,7 +17,10 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
   // Cleanup stream on unmount
   useEffect(() => {
     return () => {
-      stopStreamTracks();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
     };
   }, []);
 
@@ -32,16 +35,11 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
   };
 
   const startCamera = async () => {
-    // Stop any existing stream first
-    stopStreamTracks();
-
-    setCameraState('requesting');
-    setErrorMessage('');
-
+    // getUserMedia MUST be the very first async call — called directly in the
+    // click handler with no preceding async operations so the browser
+    // recognises this as a user-gesture-initiated permission request.
     let stream: MediaStream;
-
     try {
-      // Directly call getUserMedia — no pre-checks, no enumerateDevices
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     } catch (err: unknown) {
       const error = err as DOMException;
@@ -52,12 +50,11 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
       ) {
         setCameraState('denied');
         setErrorMessage(
-          'Camera access was denied. Please allow camera access in your browser settings and try again.'
+          'Camera access was denied. Please allow camera access when the browser prompt appears and try again.'
         );
       } else if (
         error.name === 'NotFoundError' ||
-        error.name === 'DevicesNotFoundError' ||
-        error.name === 'OverconstrainedError'
+        error.name === 'DevicesNotFoundError'
       ) {
         setCameraState('error');
         setErrorMessage(
@@ -82,20 +79,23 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
       return;
     }
 
-    // Stream acquired — attach to video element
+    // Stop any previous stream only after we have the new one
+    stopStreamTracks();
+
+    // Attach new stream
     streamRef.current = stream;
 
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
-      // Explicitly call play() — required in some browsers when element was hidden
       try {
         await videoRef.current.play();
       } catch {
-        // play() rejection is non-fatal (e.g. autoplay policy); stream is still attached
+        // play() rejection is non-fatal; stream is still attached
       }
     }
 
     setCameraState('active');
+    setErrorMessage('');
   };
 
   const stopCamera = () => {
@@ -107,8 +107,7 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
   const retry = () => {
     setErrorMessage('');
     setCameraState('idle');
-    // Small delay to let state settle before re-requesting
-    setTimeout(() => startCamera(), 100);
+    startCamera();
   };
 
   const isActive = cameraState === 'active';
@@ -116,23 +115,41 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
   const isDenied = cameraState === 'denied';
   const hasError = cameraState === 'denied' || cameraState === 'error';
 
+  const handleToggle = () => {
+    if (hasError) {
+      retry();
+    } else if (isActive) {
+      stopCamera();
+    } else {
+      // Set loading state visually, but getUserMedia is called first inside startCamera
+      setCameraState('requesting');
+      startCamera();
+    }
+  };
+
   return (
     <div className="bg-room-surface border border-room-border rounded-lg overflow-hidden">
       {/* Camera viewport */}
       <div className="relative w-full" style={{ aspectRatio: '4/3' }}>
         {/*
-          Video element is always rendered in the DOM so srcObject can be set
-          before the state transition makes it visible. Blur is permanent via CSS class.
+          Video element is always in the DOM so srcObject can be set before
+          the state transition. Blur is permanent via inline style.
         */}
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="camera-blur-permanent absolute inset-0 w-full h-full object-cover"
           style={{
+            filter: 'blur(12px) brightness(0.8) contrast(1.2)',
             opacity: isActive ? 1 : 0,
             transition: 'opacity 0.3s ease',
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            pointerEvents: 'none',
           }}
         />
 
@@ -191,7 +208,7 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
         )}
 
         <Button
-          onClick={hasError ? retry : isActive ? stopCamera : startCamera}
+          onClick={handleToggle}
           disabled={isLoading}
           variant="ghost"
           size="sm"

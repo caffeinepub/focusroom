@@ -1,25 +1,25 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix camera access in CameraPreview (v5 attempt)",
+  "title": "Fix camera permission popup not triggering in CameraPreview",
   "requirements": [
     {
-      "id": "REQ-18",
-      "summary": "Rewrite camera toggle logic in CameraPreview to trigger native browser permission popup and display blurred video feed",
+      "id": "REQ-19",
+      "summary": "Replace the camera toggle handler in CameraPreview.tsx to trigger the browser's native permission popup immediately on button click, without any pre-checks or device enumeration, and apply a permanent CSS blur filter to the video element.",
       "acceptanceCriteria": [
-        "Clicking the camera toggle button triggers the browser's native camera permission popup on first use.",
-        "After granting permission, the blurred video feed appears in the participant tile.",
-        "The blur filter is always applied and cannot be removed by any UI action.",
-        "If the user denies permission, a clear error message is shown inside the CameraPreview component.",
-        "No `enumerateDevices()` call or any async pre-check precedes the `getUserMedia` call.",
-        "The media stream is fully stopped and released when the component unmounts or the camera is toggled off.",
-        "The component works correctly across Chrome, Firefox, and Safari."
+        "Clicking the camera toggle button immediately triggers the browser's native permission popup without any delay or silent failure.",
+        "No `enumerateDevices()` call or any other async operation precedes the `getUserMedia` call in the handler.",
+        "On permission grant, the live video feed is displayed inside the component with a permanent CSS blur applied.",
+        "The blur filter on the video element is never removed or toggled off under any condition.",
+        "On permission denial or any other error, a human-readable error message is shown to the user in the UI.",
+        "On component unmount, all media stream tracks are stopped and the stream reference is cleared.",
+        "No legacy code paths (enumerateDevices, deviceId constraints, overconstrained retries) remain in the file."
       ],
       "file_operations": [
         {
           "path": "frontend/src/components/room/CameraPreview.tsx",
           "operation": "modify",
-          "description": "Rewrite the camera toggle logic from scratch. Remove all legacy code paths (enumerateDevices checks, overconstrained retries, deviceId constraints). Implement a simple camera handler that: (1) stops any existing media stream tracks first; (2) immediately calls `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` with no prior async calls or feature-detection guards; (3) on success, assigns the stream to `videoRef.current.srcObject` and calls `videoRef.current.play()`; (4) on failure, catches the error, sets an error state string, and displays a human-readable message ('Camera access was denied. Please allow camera access in your browser settings and try again.'). Apply a permanent CSS blur filter (`blur(12px)` with brightness/contrast adjustments) to the `<video>` element via inline style or a dedicated CSS class that is never conditionally removed. Ensure proper cleanup of media streams (stop all tracks) on component unmount using a useEffect cleanup function. Verify the camera component's usage instructions before implementing."
+          "description": "Completely replace the camera toggle handler implementation: (1) Remove all existing device enumeration, feature detection, and constraint logic; (2) Attach an onClick handler directly on the toggle button that synchronously calls `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` as the very first asynchronous operation to ensure the browser permission popup is triggered immediately; (3) Stop all tracks on any existing stream before requesting a new one; (4) On success, assign the stream to `videoRef.current.srcObject` and call `videoRef.current.play()`; (5) On failure, set an error state and display the message 'Camera access was denied. Please allow camera access when the browser prompt appears and try again.' in the UI; (6) Apply a permanent inline CSS blur filter (`filter: 'blur(12px) brightness(0.8) contrast(1.2)'`) to the `<video>` element at all times—never remove or toggle it; (7) Stop all tracks and nullify the stream on component unmount. Strip out all prior code including enumerateDevices calls, deviceId constraints, resolution constraints, feature-detection guards, and any try/catch blocks wrapping getUserMedia before the call is made."
         }
       ]
     }

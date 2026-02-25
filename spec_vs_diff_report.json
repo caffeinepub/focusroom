@@ -1,11 +1,28 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T20:44:49.375Z",
-  "summary": "The diff shows a rewrite of CameraPreview.tsx that largely satisfies REQ-18. The component directly calls getUserMedia with no pre-checks, stops tracks on unmount and toggle-off, calls play() after attaching the stream, shows error messages, and applies a permanent blur. All core acceptance criteria appear to be met based on the diff evidence. No missing requirements or hallucinated features of significance were detected.",
-  "missing_requirements": [],
-  "hallucinated_features": [],
-  "confidence": 0.88,
+  "generatedAt": "2026-02-25T20:51:32.964Z",
+  "summary": "The diff modifies CameraPreview.tsx with a new camera toggle implementation. Most REQ-19 requirements are implemented: getUserMedia is called as the first async operation, tracks are stopped, stream is assigned to videoRef and play() is called, error messages are shown, and tracks are stopped on unmount. However, there are deviations: tracks are stopped AFTER getting the new stream rather than before, and setCameraState('requesting') is called before startCamera() in the handler. The blur filter and legacy code removal cannot be fully verified due to truncation.",
+  "missing_requirements": [
+    {
+      "id": "REQ-19",
+      "requirement": "Stop all tracks on any existing stream BEFORE requesting a new one.",
+      "reason": "In startCamera(), the code calls getUserMedia first and only calls stopStreamTracks() after obtaining the new stream. The requirement explicitly states to stop existing tracks before requesting a new one.",
+      "evidence": [
+        "frontend/src/components/room/CameraPreview.tsx"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "Multiple distinct error messages for NotFoundError, NotReadableError, AbortError, TrackStartError, DevicesNotFoundError beyond the single permission denial message.",
+      "reason": "REQ-19 specifies one error message for permission denial and a generic error state for other failures. The implementation adds specific hardware-not-found and camera-in-use error messages not requested.",
+      "evidence": [
+        "frontend/src/components/room/CameraPreview.tsx"
+      ]
+    }
+  ],
+  "confidence": 0.65,
   "changed_files": [
     "frontend-file-summaries.txt",
     "frontend/src/components/room/CameraPreview.tsx",
