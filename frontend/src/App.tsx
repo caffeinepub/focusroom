@@ -6,12 +6,11 @@ import LobbyPage from './pages/LobbyPage';
 import RoomPage from './pages/RoomPage';
 import LoginPage from './pages/LoginPage';
 
+// Root route uses AppLayout which renders <Outlet /> internally
 const rootRoute = createRootRoute({
   component: () => (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} forcedTheme="dark">
-      <AppLayout>
-        <Outlet />
-      </AppLayout>
+      <AppLayout />
       <Toaster theme="dark" position="bottom-right" />
     </ThemeProvider>
   ),
@@ -39,7 +38,7 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   beforeLoad: () => {
-    throw redirect({ to: '/lobby' });
+    throw redirect({ to: '/login' });
   },
   component: () => null,
 });

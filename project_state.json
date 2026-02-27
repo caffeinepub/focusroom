@@ -1,47 +1,32 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "A focus/study app with session tracking, camera-based peer connections, and motivational gratitude card feature after each focus session.",
+  "summary": "New project",
   "architectural_notes": [],
-  "known_issues": [],
-  "isFixRequest": false,
-  "imageRequirements": "## Required Images\n- A small golden card icon with a shiny, embossed star or sparkle motif on a rich gold gradient background, square format (gold-card-icon.dim_128x128.png)",
+  "known_issues": [
+    "App shows 'connecting' indefinitely and prevents user from entering"
+  ],
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-after-each-focus-session-ends-before-the-break-phase-begins-display-a-small-golden-card-icon-in-a-corner-of-the-screen-that-does-not-interrupt-or-overlap-the-timer-display-and-does-not-block-any-interactive-ui-elements",
-      "title": "After each focus session ends (before the break phase begins), display a small golden card icon in a corner of the screen that does not interrupt or overlap the timer display and does not block any interactive UI elements.",
+      "id": "feature-investigate-and-fix-the-indefinite-connecting-state-that-prevents-users-from-entering-the-app-identify-where-the-connecting-screen-state-is-triggered-likely-in-authentication-flow-internet-identity-initialization-or-actor-setup-and-ensure-it-transitions-correctly-to-the-authenticated-state-or-displays-a-meaningful-error-with-a-retry-option-if-the-connection-genuinely-fails",
+      "title": "Investigate and fix the indefinite 'connecting' state that prevents users from entering the app. Identify where the connecting screen/state is triggered (likely in authentication flow, Internet Identity initialization, or actor setup) and ensure it transitions correctly to the authenticated state or displays a meaningful error with a retry option if the connection genuinely fails.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-implement-a-scratch-card-animation-on-the-golden-card-icon-when-the-user-clicks-it-the-card-expands-or-reveals-a-surface-that-the-user-appears-to-scratch-off-progressively-uncovering-a-short-motivational-gratitude-message-beneath",
-      "title": "Implement a scratch card animation on the golden card icon when the user clicks it. The card expands or reveals a surface that the user appears to 'scratch off', progressively uncovering a short motivational/gratitude message beneath.",
+      "id": "feature-add-a-timeout-mechanism-to-the-authentication-actor-initialization-flow-so-that-if-the-connecting-state-does-not-resolve-within-15-seconds-the-app-exits-the-connecting-state-displays-a-user-friendly-error-message-and-offers-a-retry-or-logout-option",
+      "title": "Add a timeout mechanism to the authentication/actor initialization flow so that if the 'connecting' state does not resolve within 15 seconds, the app exits the connecting state, displays a user-friendly error message, and offers a retry or logout option.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
-    },
-    {
-      "id": "feature-maintain-a-predefined-list-of-seven-gratitude-motivational-messages-and-display-exactly-one-message-per-focus-session-cycling-through-the-list-in-a-shuffled-order-after-all-seven-messages-have-been-shown-reshuffle-the-list-and-repeat-the-messages-are-many-want-to-study-but-cannot-afford-internet-thank-your-lord-many-are-praying-for-opportunity-you-are-inside-it-alhamdulillah-not-everyone-gets-time-access-and-ability-together-you-do-thank-your-lord-learning-is-rizq-you-are-in-a-position-many-wish-for-some-want-education-but-doors-were-closed-yours-are-open-thank-your-creator-rabbi-zidni-ilma-my-lord-increase-me-in-knowledge",
-      "title": "Maintain a predefined list of seven gratitude/motivational messages and display exactly one message per focus session, cycling through the list in a shuffled order. After all seven messages have been shown, reshuffle the list and repeat. The messages are: 'Many want to study but cannot afford internet. Thank your Lord.', 'Many are praying for opportunity. You are inside it. Alhamdulillah.', 'Not everyone gets time, access, and ability together. You do. Thank your Lord.', 'Learning is rizq.', 'You are in a position many wish for.', 'Some want education but doors were closed. Yours are open. Thank your creator.', 'Rabbi zidni ilma — My Lord, increase me in knowledge.'",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
     }
   ],
-  "new_feature_requests": [
-    {
-      "id": "AR-1",
-      "summary": "After each focus session, show a non-intrusive golden card icon in the corner. Clicking it triggers a scratch animation revealing a shuffled gratitude/motivational message (e.g. 'Learning is rizq', 'Rabbi zidni ilma', etc.). Messages cycle through a predefined list, shuffled per session.",
-      "reqIds": [],
-      "status": "pending"
-    }
-  ],
-  "gameProjectType": "none",
-  "projectName": "FocusRoom",
+  "new_feature_requests": [],
+  "projectName": "Fix indefinite 'connecting' state blocking app entry",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

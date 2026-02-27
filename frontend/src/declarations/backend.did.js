@@ -14,13 +14,9 @@ export const UserRole = IDL.Variant({
   'guest' : IDL.Null,
 });
 export const RoomId = IDL.Text;
-export const UserProfile = IDL.Record({ 'username' : IDL.Text });
-export const Time = IDL.Int;
-export const Phase = IDL.Variant({ 'focus' : IDL.Null, 'pause' : IDL.Null });
-export const Session = IDL.Record({
-  'startTime' : Time,
-  'isPause' : IDL.Bool,
-  'phase' : Phase,
+export const UserProfile = IDL.Record({
+  'xp' : IDL.Nat,
+  'username' : IDL.Text,
 });
 export const SignalType = IDL.Variant({
   'iceCandidate' : IDL.Null,
@@ -34,11 +30,13 @@ export const Signal = IDL.Record({
   'signalType' : SignalType,
 });
 export const SignalResponse = IDL.Record({ 'data' : IDL.Vec(Signal) });
+export const Time = IDL.Int;
 export const UniqueCode = IDL.Text;
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'awardXp' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
   'clearSignals' : IDL.Func([IDL.Text], [], []),
   'createRoom' : IDL.Func([], [IDL.Text], []),
   'getBurntCategories' : IDL.Func([], [IDL.Vec(RoomId)], ['query']),
@@ -51,7 +49,6 @@ export const idlService = IDL.Service({
       [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Text))],
       ['query'],
     ),
-  'getTimerState' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -66,8 +63,7 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
-  'startSession' : IDL.Func([IDL.Text, Phase], [], []),
-  'storeEvent' : IDL.Func([IDL.Text, IDL.Opt(Phase), Time], [UniqueCode], []),
+  'storeEvent' : IDL.Func([IDL.Text, Time], [UniqueCode], []),
 });
 
 export const idlInitArgs = [];
@@ -79,14 +75,7 @@ export const idlFactory = ({ IDL }) => {
     'guest' : IDL.Null,
   });
   const RoomId = IDL.Text;
-  const UserProfile = IDL.Record({ 'username' : IDL.Text });
-  const Time = IDL.Int;
-  const Phase = IDL.Variant({ 'focus' : IDL.Null, 'pause' : IDL.Null });
-  const Session = IDL.Record({
-    'startTime' : Time,
-    'isPause' : IDL.Bool,
-    'phase' : Phase,
-  });
+  const UserProfile = IDL.Record({ 'xp' : IDL.Nat, 'username' : IDL.Text });
   const SignalType = IDL.Variant({
     'iceCandidate' : IDL.Null,
     'offer' : IDL.Null,
@@ -99,11 +88,13 @@ export const idlFactory = ({ IDL }) => {
     'signalType' : SignalType,
   });
   const SignalResponse = IDL.Record({ 'data' : IDL.Vec(Signal) });
+  const Time = IDL.Int;
   const UniqueCode = IDL.Text;
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'awardXp' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
     'clearSignals' : IDL.Func([IDL.Text], [], []),
     'createRoom' : IDL.Func([], [IDL.Text], []),
     'getBurntCategories' : IDL.Func([], [IDL.Vec(RoomId)], ['query']),
@@ -116,7 +107,6 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Text))],
         ['query'],
       ),
-    'getTimerState' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -131,8 +121,7 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
-    'startSession' : IDL.Func([IDL.Text, Phase], [], []),
-    'storeEvent' : IDL.Func([IDL.Text, IDL.Opt(Phase), Time], [UniqueCode], []),
+    'storeEvent' : IDL.Func([IDL.Text, Time], [UniqueCode], []),
   });
 };
 

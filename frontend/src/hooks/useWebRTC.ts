@@ -3,351 +3,232 @@ import { useActor } from './useActor';
 import { SignalType } from '../backend';
 import type { Principal } from '@dfinity/principal';
 
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-];
-
-const POLL_INTERVAL_MS = 1500;
-
-export interface RemoteStream {
+interface RemoteStream {
   peerId: string;
-  username: string;
   stream: MediaStream;
 }
 
 interface UseWebRTCOptions {
   roomId: string;
   localStream: MediaStream | null;
-  isEnabled: boolean;
-  participants: Array<[Principal, string]>;
-  localPrincipal: string;
+  enabled: boolean;
+  currentUserPrincipal: string;
 }
 
-export function useWebRTC({
-  roomId,
-  localStream,
-  isEnabled,
-  participants,
-  localPrincipal,
-}: UseWebRTCOptions) {
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+];
+
+const POLL_INTERVAL_MS = 2000;
+
+export function useWebRTC({ roomId, localStream, enabled, currentUserPrincipal }: UseWebRTCOptions) {
   const { actor } = useActor();
-
-  // Map of peerId -> RTCPeerConnection
-  const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
-  // Map of peerId -> username
-  const peerUsernamesRef = useRef<Map<string, string>>(new Map());
-  // Track which peers we've already sent offers to (to avoid duplicate offers)
-  const offeredPeersRef = useRef<Set<string>>(new Set());
-  // Pending ICE candidates queued before remote description is set
-  const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
-
   const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isEnabledRef = useRef(isEnabled);
-  const localStreamRef = useRef(localStream);
-  const actorRef = useRef(actor);
+  const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isCleaningUpRef = useRef(false);
+  const processedSignalsRef = useRef<Set<string>>(new Set());
 
-  // Keep refs in sync
-  useEffect(() => { isEnabledRef.current = isEnabled; }, [isEnabled]);
-  useEffect(() => { localStreamRef.current = localStream; }, [localStream]);
-  useEffect(() => { actorRef.current = actor; }, [actor]);
-
-  const removeRemoteStream = useCallback((peerId: string) => {
-    setRemoteStreams((prev) => prev.filter((s) => s.peerId !== peerId));
+  const addOrUpdateRemoteStream = useCallback((peerId: string, stream: MediaStream) => {
+    setRemoteStreams(prev => {
+      // Deduplicate: if this peerId already exists, replace it
+      const filtered = prev.filter(rs => rs.peerId !== peerId);
+      return [...filtered, { peerId, stream }];
+    });
   }, []);
 
-  const closePeerConnection = useCallback((peerId: string) => {
-    const pc = peerConnectionsRef.current.get(peerId);
-    if (pc) {
-      pc.ontrack = null;
-      pc.onicecandidate = null;
-      pc.onconnectionstatechange = null;
-      pc.close();
+  const removeRemoteStream = useCallback((peerId: string) => {
+    setRemoteStreams(prev => prev.filter(rs => rs.peerId !== peerId));
+  }, []);
+
+  const createPeerConnection = useCallback((peerId: string): RTCPeerConnection => {
+    // If a connection already exists for this peer, close and remove it first
+    const existing = peerConnectionsRef.current.get(peerId);
+    if (existing) {
+      existing.close();
       peerConnectionsRef.current.delete(peerId);
+      removeRemoteStream(peerId);
     }
-    offeredPeersRef.current.delete(peerId);
-    pendingCandidatesRef.current.delete(peerId);
-    removeRemoteStream(peerId);
-  }, [removeRemoteStream]);
 
-  const createPeerConnection = useCallback(
-    (peerId: string, username: string): RTCPeerConnection => {
-      // Close existing connection if any
-      if (peerConnectionsRef.current.has(peerId)) {
-        closePeerConnection(peerId);
-      }
+    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-      peerConnectionsRef.current.set(peerId, pc);
-      peerUsernamesRef.current.set(peerId, username);
+    // Add local tracks if available
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        pc.addTrack(track, localStream);
+      });
+    }
 
-      // Add local tracks if camera is active
-      const stream = localStreamRef.current;
-      if (stream) {
-        stream.getTracks().forEach((track) => {
-          pc.addTrack(track, stream);
-        });
-      }
+    // Handle remote stream
+    const remoteStream = new MediaStream();
+    pc.ontrack = (event) => {
+      event.streams[0]?.getTracks().forEach(track => {
+        remoteStream.addTrack(track);
+      });
+      addOrUpdateRemoteStream(peerId, remoteStream);
+    };
 
-      // Handle incoming remote tracks
-      pc.ontrack = (event) => {
-        const [remoteStream] = event.streams;
-        if (!remoteStream) return;
-        setRemoteStreams((prev) => {
-          const existing = prev.find((s) => s.peerId === peerId);
-          if (existing) {
-            return prev.map((s) =>
-              s.peerId === peerId ? { ...s, stream: remoteStream } : s
-            );
-          }
-          return [...prev, { peerId, username, stream: remoteStream }];
-        });
-      };
-
-      // Send ICE candidates via backend signaling
-      pc.onicecandidate = async (event) => {
-        if (!event.candidate) return;
-        const currentActor = actorRef.current;
-        if (!currentActor) return;
-        try {
-          await currentActor.sendSignal(
-            roomId,
-            { toString: () => peerId } as unknown as import('@dfinity/principal').Principal,
-            SignalType.iceCandidate,
-            JSON.stringify(event.candidate.toJSON())
-          );
-        } catch {
-          // Ignore send errors silently
-        }
-      };
-
-      pc.onconnectionstatechange = () => {
-        const state = pc.connectionState;
-        if (state === 'disconnected' || state === 'failed' || state === 'closed') {
-          removeRemoteStream(peerId);
-        }
-      };
-
-      return pc;
-    },
-    [roomId, closePeerConnection, removeRemoteStream]
-  );
-
-  // Initiate offers to all remote participants when camera is enabled
-  const initiateConnections = useCallback(async () => {
-    const currentActor = actorRef.current;
-    if (!currentActor || !isEnabledRef.current) return;
-
-    for (const [principal, username] of participants) {
-      const peerId = principal.toString();
-      if (peerId === localPrincipal) continue;
-      if (offeredPeersRef.current.has(peerId)) continue;
-
-      offeredPeersRef.current.add(peerId);
-
-      const pc = createPeerConnection(peerId, username);
-
+    // Handle ICE candidates
+    pc.onicecandidate = async (event) => {
+      if (!event.candidate || !actor || isCleaningUpRef.current) return;
       try {
-        const offer = await pc.createOffer({ offerToReceiveVideo: true });
-        await pc.setLocalDescription(offer);
-
-        await currentActor.sendSignal(
+        const recipientPrincipal = { toString: () => peerId } as Principal;
+        await actor.sendSignal(
           roomId,
-          principal,
-          SignalType.offer,
-          JSON.stringify(pc.localDescription)
+          recipientPrincipal,
+          SignalType.iceCandidate,
+          JSON.stringify(event.candidate.toJSON())
         );
-      } catch {
-        offeredPeersRef.current.delete(peerId);
-        closePeerConnection(peerId);
+      } catch (err) {
+        // Ignore send errors during cleanup
       }
-    }
-  }, [participants, localPrincipal, roomId, createPeerConnection, closePeerConnection]);
+    };
 
-  // Process incoming signals
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+        removeRemoteStream(peerId);
+        peerConnectionsRef.current.delete(peerId);
+      }
+    };
+
+    peerConnectionsRef.current.set(peerId, pc);
+    return pc;
+  }, [actor, localStream, roomId, addOrUpdateRemoteStream, removeRemoteStream]);
+
   const processSignals = useCallback(async () => {
-    const currentActor = actorRef.current;
-    if (!currentActor) return;
+    if (!actor || !enabled || isCleaningUpRef.current) return;
 
-    let response;
+    let signals;
     try {
-      response = await currentActor.receiveSignals(roomId);
+      const response = await actor.receiveSignals(roomId);
+      signals = response.data;
     } catch {
       return;
     }
 
-    const signals = response.data;
     if (!signals || signals.length === 0) return;
 
-    // Clear signals after receiving
+    // Clear processed signals after receiving
     try {
-      await currentActor.clearSignals(roomId);
+      await actor.clearSignals(roomId);
     } catch {
       // Ignore
     }
 
     for (const signal of signals) {
-      const peerId = signal.from.toString();
-      const username = peerUsernamesRef.current.get(peerId) ||
-        participants.find(([p]) => p.toString() === peerId)?.[1] || peerId.slice(0, 8);
+      const fromId = signal.from.toString();
 
-      if (signal.signalType === SignalType.offer) {
-        // We received an offer — create answer
-        let pc = peerConnectionsRef.current.get(peerId);
-        if (!pc) {
-          pc = createPeerConnection(peerId, username);
-        }
+      // Skip signals from ourselves
+      if (fromId === currentUserPrincipal) continue;
 
-        try {
-          const offerDesc = JSON.parse(signal.payload) as RTCSessionDescriptionInit;
-          await pc.setRemoteDescription(new RTCSessionDescription(offerDesc));
+      // Create a unique key for deduplication
+      const signalKey = `${fromId}-${signal.signalType}-${signal.payload.substring(0, 50)}`;
+      if (processedSignalsRef.current.has(signalKey)) continue;
+      processedSignalsRef.current.add(signalKey);
 
-          // Flush pending ICE candidates
-          const pending = pendingCandidatesRef.current.get(peerId) || [];
-          for (const candidate of pending) {
-            try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch { /* ignore */ }
-          }
-          pendingCandidatesRef.current.delete(peerId);
+      // Limit the processed signals set size
+      if (processedSignalsRef.current.size > 500) {
+        const entries = Array.from(processedSignalsRef.current);
+        processedSignalsRef.current = new Set(entries.slice(-250));
+      }
 
+      try {
+        if (signal.signalType === SignalType.offer) {
+          const pc = createPeerConnection(fromId);
+          await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(signal.payload)));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
 
-          const fromPrincipal = signal.from;
-          await currentActor.sendSignal(
+          const recipientPrincipal = { toString: () => fromId } as Principal;
+          await actor.sendSignal(
             roomId,
-            fromPrincipal,
+            recipientPrincipal,
             SignalType.answer,
-            JSON.stringify(pc.localDescription)
+            JSON.stringify(answer)
           );
-        } catch {
-          // Ignore negotiation errors
-        }
-      } else if (signal.signalType === SignalType.answer) {
-        const pc = peerConnectionsRef.current.get(peerId);
-        if (!pc) continue;
-
-        try {
-          if (pc.signalingState === 'have-local-offer') {
-            const answerDesc = JSON.parse(signal.payload) as RTCSessionDescriptionInit;
-            await pc.setRemoteDescription(new RTCSessionDescription(answerDesc));
-
-            // Flush pending ICE candidates
-            const pending = pendingCandidatesRef.current.get(peerId) || [];
-            for (const candidate of pending) {
-              try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch { /* ignore */ }
-            }
-            pendingCandidatesRef.current.delete(peerId);
+        } else if (signal.signalType === SignalType.answer) {
+          const pc = peerConnectionsRef.current.get(fromId);
+          if (pc && pc.signalingState === 'have-local-offer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(signal.payload)));
           }
-        } catch {
-          // Ignore
-        }
-      } else if (signal.signalType === SignalType.iceCandidate) {
-        const pc = peerConnectionsRef.current.get(peerId);
-        const candidateInit = JSON.parse(signal.payload) as RTCIceCandidateInit;
-
-        if (pc && pc.remoteDescription) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(candidateInit));
-          } catch {
-            // Ignore
+        } else if (signal.signalType === SignalType.iceCandidate) {
+          const pc = peerConnectionsRef.current.get(fromId);
+          if (pc && pc.remoteDescription) {
+            await pc.addIceCandidate(new RTCIceCandidate(JSON.parse(signal.payload)));
           }
-        } else {
-          // Queue candidate until remote description is set
-          const existing = pendingCandidatesRef.current.get(peerId) || [];
-          pendingCandidatesRef.current.set(peerId, [...existing, candidateInit]);
         }
+      } catch (err) {
+        // Ignore individual signal processing errors
       }
     }
-  }, [roomId, participants, createPeerConnection]);
+  }, [actor, enabled, roomId, currentUserPrincipal, createPeerConnection]);
 
-  // Start/stop polling for signals
+  const initiateCallToPeer = useCallback(async (peerId: string) => {
+    if (!actor || isCleaningUpRef.current) return;
+
+    // Don't call ourselves
+    if (peerId === currentUserPrincipal) return;
+
+    // Don't create duplicate connections
+    const existing = peerConnectionsRef.current.get(peerId);
+    if (existing && (existing.signalingState !== 'closed')) return;
+
+    const pc = createPeerConnection(peerId);
+
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      const recipientPrincipal = { toString: () => peerId } as Principal;
+      await actor.sendSignal(
+        roomId,
+        recipientPrincipal,
+        SignalType.offer,
+        JSON.stringify(offer)
+      );
+    } catch (err) {
+      // Ignore offer errors
+    }
+  }, [actor, currentUserPrincipal, createPeerConnection, roomId]);
+
+  // Start/stop polling
   useEffect(() => {
-    if (!actor || !roomId) return;
-
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
+    if (!enabled || !actor) {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
     }
 
-    pollingRef.current = setInterval(() => {
-      processSignals();
-    }, POLL_INTERVAL_MS);
+    isCleaningUpRef.current = false;
+    pollingIntervalRef.current = setInterval(processSignals, POLL_INTERVAL_MS);
 
     return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
       }
     };
-  }, [actor, roomId, processSignals]);
-
-  // When camera is enabled, initiate connections to all current participants
-  useEffect(() => {
-    if (isEnabled && localStream && participants.length > 0) {
-      initiateConnections();
-    }
-  }, [isEnabled, localStream, participants, initiateConnections]);
-
-  // When new participants join, connect to them if camera is active
-  useEffect(() => {
-    if (!isEnabled || !localStream) return;
-
-    for (const [principal, username] of participants) {
-      const peerId = principal.toString();
-      if (peerId === localPrincipal) continue;
-      if (!offeredPeersRef.current.has(peerId)) {
-        offeredPeersRef.current.add(peerId);
-        const pc = createPeerConnection(peerId, username);
-        (async () => {
-          try {
-            const offer = await pc.createOffer({ offerToReceiveVideo: true });
-            await pc.setLocalDescription(offer);
-            const currentActor = actorRef.current;
-            if (currentActor) {
-              await currentActor.sendSignal(
-                roomId,
-                principal,
-                SignalType.offer,
-                JSON.stringify(pc.localDescription)
-              );
-            }
-          } catch {
-            offeredPeersRef.current.delete(peerId);
-            closePeerConnection(peerId);
-          }
-        })();
-      }
-    }
-  }, [participants, isEnabled, localStream, localPrincipal, roomId, createPeerConnection, closePeerConnection]);
-
-  // When camera is disabled, close all peer connections
-  useEffect(() => {
-    if (!isEnabled) {
-      const peerIds = Array.from(peerConnectionsRef.current.keys());
-      peerIds.forEach(closePeerConnection);
-      offeredPeersRef.current.clear();
-      setRemoteStreams([]);
-    }
-  }, [isEnabled, closePeerConnection]);
+  }, [enabled, actor, processSignals]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
+      isCleaningUpRef.current = true;
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
       }
-      peerConnectionsRef.current.forEach((pc) => {
-        pc.ontrack = null;
-        pc.onicecandidate = null;
-        pc.onconnectionstatechange = null;
-        pc.close();
-      });
+      peerConnectionsRef.current.forEach(pc => pc.close());
       peerConnectionsRef.current.clear();
-      offeredPeersRef.current.clear();
-      pendingCandidatesRef.current.clear();
+      setRemoteStreams([]);
     };
   }, []);
 
-  return { remoteStreams };
+  return {
+    remoteStreams,
+    initiateCallToPeer,
+  };
 }

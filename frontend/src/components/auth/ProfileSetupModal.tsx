@@ -20,7 +20,7 @@ export default function ProfileSetupModal() {
     e.preventDefault();
     const trimmed = username.trim();
     if (!trimmed || trimmed.length < 2) return;
-    saveProfile({ username: trimmed });
+    saveProfile({ username: trimmed, xp: BigInt(0) });
   };
 
   return (
@@ -72,7 +72,7 @@ export default function ProfileSetupModal() {
                 Saving...
               </>
             ) : (
-              'Enter FocusRoom'
+              'Enter Studyroom'
             )}
           </Button>
         </form>

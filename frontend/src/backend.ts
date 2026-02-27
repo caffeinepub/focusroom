@@ -96,22 +96,14 @@ export interface Signal {
     signalType: SignalType;
 }
 export type UniqueCode = string;
-export interface Session {
-    startTime: Time;
-    isPause: boolean;
-    phase: Phase;
-}
 export type Time = bigint;
 export interface SignalResponse {
     data: Array<Signal>;
 }
 export type RoomId = string;
 export interface UserProfile {
+    xp: bigint;
     username: string;
-}
-export enum Phase {
-    focus = "focus",
-    pause = "pause"
 }
 export enum SignalType {
     iceCandidate = "iceCandidate",
@@ -126,6 +118,7 @@ export enum UserRole {
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    awardXp(recipient: Principal, amount: bigint): Promise<void>;
     clearSignals(roomId: string): Promise<void>;
     createRoom(): Promise<string>;
     getBurntCategories(): Promise<Array<RoomId>>;
@@ -134,17 +127,15 @@ export interface backendInterface {
     getCurrentCategory(): Promise<RoomId | null>;
     getPreviousCategories(): Promise<Array<RoomId>>;
     getRoomParticipants(roomId: string): Promise<Array<[Principal, string]>>;
-    getTimerState(code: string): Promise<Session | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     joinRoom(code: string): Promise<void>;
     receiveSignals(roomId: string): Promise<SignalResponse>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendSignal(roomId: string, recipient: Principal, signalType: SignalType, payload: string): Promise<void>;
-    startSession(code: string, phase: Phase): Promise<void>;
-    storeEvent(name: string, phase: Phase | null, date: Time): Promise<UniqueCode>;
+    storeEvent(name: string, date: Time): Promise<UniqueCode>;
 }
-import type { Phase as _Phase, RoomId as _RoomId, Session as _Session, Signal as _Signal, SignalResponse as _SignalResponse, SignalType as _SignalType, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { RoomId as _RoomId, Signal as _Signal, SignalResponse as _SignalResponse, SignalType as _SignalType, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -172,6 +163,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async awardXp(arg0: Principal, arg1: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.awardXp(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.awardXp(arg0, arg1);
             return result;
         }
     }
@@ -287,20 +292,6 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getTimerState(arg0: string): Promise<Session | null> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getTimerState(arg0);
-                return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getTimerState(arg0);
-            return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
-        }
-    }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
         if (this.processError) {
             try {
@@ -347,14 +338,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.receiveSignals(arg0);
-                return from_candid_SignalResponse_n12(this._uploadFile, this._downloadFile, result);
+                return from_candid_SignalResponse_n7(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.receiveSignals(arg0);
-            return from_candid_SignalResponse_n12(this._uploadFile, this._downloadFile, result);
+            return from_candid_SignalResponse_n7(this._uploadFile, this._downloadFile, result);
         }
     }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
@@ -374,60 +365,40 @@ export class Backend implements backendInterface {
     async sendSignal(arg0: string, arg1: Principal, arg2: SignalType, arg3: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.sendSignal(arg0, arg1, to_candid_SignalType_n19(this._uploadFile, this._downloadFile, arg2), arg3);
+                const result = await this.actor.sendSignal(arg0, arg1, to_candid_SignalType_n14(this._uploadFile, this._downloadFile, arg2), arg3);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.sendSignal(arg0, arg1, to_candid_SignalType_n19(this._uploadFile, this._downloadFile, arg2), arg3);
+            const result = await this.actor.sendSignal(arg0, arg1, to_candid_SignalType_n14(this._uploadFile, this._downloadFile, arg2), arg3);
             return result;
         }
     }
-    async startSession(arg0: string, arg1: Phase): Promise<void> {
+    async storeEvent(arg0: string, arg1: Time): Promise<UniqueCode> {
         if (this.processError) {
             try {
-                const result = await this.actor.startSession(arg0, to_candid_Phase_n21(this._uploadFile, this._downloadFile, arg1));
+                const result = await this.actor.storeEvent(arg0, arg1);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.startSession(arg0, to_candid_Phase_n21(this._uploadFile, this._downloadFile, arg1));
-            return result;
-        }
-    }
-    async storeEvent(arg0: string, arg1: Phase | null, arg2: Time): Promise<UniqueCode> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.storeEvent(arg0, to_candid_opt_n23(this._uploadFile, this._downloadFile, arg1), arg2);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.storeEvent(arg0, to_candid_opt_n23(this._uploadFile, this._downloadFile, arg1), arg2);
+            const result = await this.actor.storeEvent(arg0, arg1);
             return result;
         }
     }
 }
-function from_candid_Phase_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Phase): Phase {
-    return from_candid_variant_n11(_uploadFile, _downloadFile, value);
+function from_candid_SignalResponse_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SignalResponse): SignalResponse {
+    return from_candid_record_n8(_uploadFile, _downloadFile, value);
 }
-function from_candid_Session_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Session): Session {
-    return from_candid_record_n9(_uploadFile, _downloadFile, value);
+function from_candid_SignalType_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SignalType): SignalType {
+    return from_candid_variant_n13(_uploadFile, _downloadFile, value);
 }
-function from_candid_SignalResponse_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SignalResponse): SignalResponse {
-    return from_candid_record_n13(_uploadFile, _downloadFile, value);
-}
-function from_candid_SignalType_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SignalType): SignalType {
-    return from_candid_variant_n18(_uploadFile, _downloadFile, value);
-}
-function from_candid_Signal_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Signal): Signal {
-    return from_candid_record_n16(_uploadFile, _downloadFile, value);
+function from_candid_Signal_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Signal): Signal {
+    return from_candid_record_n11(_uploadFile, _downloadFile, value);
 }
 function from_candid_UserRole_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
     return from_candid_variant_n5(_uploadFile, _downloadFile, value);
@@ -438,19 +409,7 @@ function from_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_RoomId]): RoomId | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Session]): Session | null {
-    return value.length === 0 ? null : from_candid_Session_n8(_uploadFile, _downloadFile, value[0]);
-}
-function from_candid_record_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    data: Array<_Signal>;
-}): {
-    data: Array<Signal>;
-} {
-    return {
-        data: from_candid_vec_n14(_uploadFile, _downloadFile, value.data)
-    };
-}
-function from_candid_record_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     to: Principal;
     from: Principal;
     payload: string;
@@ -465,32 +424,19 @@ function from_candid_record_n16(_uploadFile: (file: ExternalBlob) => Promise<Uin
         to: value.to,
         from: value.from,
         payload: value.payload,
-        signalType: from_candid_SignalType_n17(_uploadFile, _downloadFile, value.signalType)
+        signalType: from_candid_SignalType_n12(_uploadFile, _downloadFile, value.signalType)
     };
 }
-function from_candid_record_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    startTime: _Time;
-    isPause: boolean;
-    phase: _Phase;
+function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    data: Array<_Signal>;
 }): {
-    startTime: Time;
-    isPause: boolean;
-    phase: Phase;
+    data: Array<Signal>;
 } {
     return {
-        startTime: value.startTime,
-        isPause: value.isPause,
-        phase: from_candid_Phase_n10(_uploadFile, _downloadFile, value.phase)
+        data: from_candid_vec_n9(_uploadFile, _downloadFile, value.data)
     };
 }
-function from_candid_variant_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    focus: null;
-} | {
-    pause: null;
-}): Phase {
-    return "focus" in value ? Phase.focus : "pause" in value ? Phase.pause : value;
-}
-function from_candid_variant_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     iceCandidate: null;
 } | {
     offer: null;
@@ -508,37 +454,16 @@ function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_vec_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Signal>): Array<Signal> {
-    return value.map((x)=>from_candid_Signal_n15(_uploadFile, _downloadFile, x));
+function from_candid_vec_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Signal>): Array<Signal> {
+    return value.map((x)=>from_candid_Signal_n10(_uploadFile, _downloadFile, x));
 }
-function to_candid_Phase_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Phase): _Phase {
-    return to_candid_variant_n22(_uploadFile, _downloadFile, value);
-}
-function to_candid_SignalType_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: SignalType): _SignalType {
-    return to_candid_variant_n20(_uploadFile, _downloadFile, value);
+function to_candid_SignalType_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: SignalType): _SignalType {
+    return to_candid_variant_n15(_uploadFile, _downloadFile, value);
 }
 function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n2(_uploadFile, _downloadFile, value);
 }
-function to_candid_opt_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Phase | null): [] | [_Phase] {
-    return value === null ? candid_none() : candid_some(to_candid_Phase_n21(_uploadFile, _downloadFile, value));
-}
-function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
-    admin: null;
-} | {
-    user: null;
-} | {
-    guest: null;
-} {
-    return value == UserRole.admin ? {
-        admin: null
-    } : value == UserRole.user ? {
-        user: null
-    } : value == UserRole.guest ? {
-        guest: null
-    } : value;
-}
-function to_candid_variant_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: SignalType): {
+function to_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: SignalType): {
     iceCandidate: null;
 } | {
     offer: null;
@@ -553,15 +478,19 @@ function to_candid_variant_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint
         answer: null
     } : value;
 }
-function to_candid_variant_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Phase): {
-    focus: null;
+function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
+    admin: null;
 } | {
-    pause: null;
+    user: null;
+} | {
+    guest: null;
 } {
-    return value == Phase.focus ? {
-        focus: null
-    } : value == Phase.pause ? {
-        pause: null
+    return value == UserRole.admin ? {
+        admin: null
+    } : value == UserRole.user ? {
+        user: null
+    } : value == UserRole.guest ? {
+        guest: null
     } : value;
 }
 export interface CreateActorOptions {

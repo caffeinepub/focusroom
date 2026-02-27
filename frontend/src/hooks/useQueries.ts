@@ -1,19 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import { Phase, type Session } from '../backend';
 import type { Principal } from '@dfinity/principal';
 
-const LAST_ROOM_KEY = 'focusroom_last_room';
+const LAST_ROOM_KEY = 'studyroom_last_room';
 
 // ─── Room ────────────────────────────────────────────────────────────────────
 
 export function useCreateRoom() {
-  const { actor } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (): Promise<string> => {
-      if (!actor) throw new Error('Actor not available. Please wait and try again.');
+      if (!actor || actorFetching) {
+        throw new Error('Actor not available. Please wait for the network connection to be established.');
+      }
       const code = await actor.createRoom();
       if (!code || typeof code !== 'string') {
         throw new Error('Invalid room code returned from server.');
@@ -31,12 +32,14 @@ export function useCreateRoom() {
 }
 
 export function useJoinRoom() {
-  const { actor } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (code: string): Promise<void> => {
-      if (!actor) throw new Error('Actor not available. Please wait and try again.');
+      if (!actor || actorFetching) {
+        throw new Error('Backend actor not yet initialized. Please wait a moment and try again.');
+      }
       await actor.joinRoom(code);
       // Persist for instant rejoin
       localStorage.setItem(LAST_ROOM_KEY, code);
@@ -47,39 +50,7 @@ export function useJoinRoom() {
   });
 }
 
-// ─── Timer ───────────────────────────────────────────────────────────────────
-
-export function useTimerState(code: string) {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  return useQuery<Session | null>({
-    queryKey: ['timerState', code],
-    queryFn: async () => {
-      if (!actor) return null;
-      return actor.getTimerState(code);
-    },
-    enabled: !!actor && !actorFetching && !!code,
-    refetchInterval: 2000,
-    staleTime: 0,
-  });
-}
-
-export function useStartSession() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ code, phase }: { code: string; phase: Phase }) => {
-      if (!actor) throw new Error('Actor not available');
-      await actor.startSession(code, phase);
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['timerState', variables.code] });
-    },
-  });
-}
-
-// ─── Events (chat messages & goals) ──────────────────────────────────────────
+// ─── Events (chat messages) ───────────────────────────────────────────────────
 
 export function useStoreEvent() {
   const { actor } = useActor();
@@ -88,17 +59,15 @@ export function useStoreEvent() {
   return useMutation({
     mutationFn: async ({
       name,
-      phase,
       date,
       roomCode,
     }: {
       name: string;
-      phase: Phase | null;
       date: bigint;
       roomCode: string;
     }): Promise<string> => {
       if (!actor) throw new Error('Actor not available');
-      return actor.storeEvent(name, phase, date);
+      return actor.storeEvent(name, date);
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['messages', variables.roomCode] });
@@ -121,5 +90,22 @@ export function useGetRoomParticipants(roomId: string) {
     enabled: !!actor && !actorFetching && !!roomId,
     refetchInterval: 4000,
     staleTime: 0,
+  });
+}
+
+// ─── XP ──────────────────────────────────────────────────────────────────────
+
+export function useAwardXp() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ recipient, amount }: { recipient: Principal; amount: bigint }): Promise<void> => {
+      if (!actor) throw new Error('Actor not available');
+      await actor.awardXp(recipient, amount);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+    },
   });
 }

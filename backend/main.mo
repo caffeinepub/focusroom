@@ -6,25 +6,22 @@ import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import List "mo:core/List";
 import Int "mo:core/Int";
+import Nat "mo:core/Nat";
+
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+
+// Use migration function from migration.mo
 
 actor {
   type Event = {
     name : Text;
     date : Time.Time;
-    phase : ?Phase;
   };
 
   type RoomId = Text;
   type UniqueCode = Text;
-
-  type Session = {
-    startTime : Time.Time;
-    phase : Phase;
-    isPause : Bool;
-  };
 
   type Room = {
     id : RoomId;
@@ -36,19 +33,14 @@ actor {
     username : Text;
   };
 
-  type Phase = {
-    #focus;
-    #pause;
-  };
-
   type RoomState = {
-    var participants : Set.Set<Principal>;
-    var session : ?Session;
+    participants : Set.Set<Principal>;
     creator : Principal;
   };
 
   public type UserProfile = {
     username : Text;
+    xp : Nat;
   };
 
   public type Signal = {
@@ -83,7 +75,7 @@ actor {
   let joinedRoomsList = List.empty<RoomId>();
   let burntRoomsList = List.empty<RoomId>();
 
-  // --- User Profile Functions (required by instructions) ---
+  // --- User Profile Functions ---
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can get their profile");
@@ -102,7 +94,12 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
-    userProfiles.add(caller, profile);
+    // Preserve existing XP when saving profile metadata
+    let existingXp = switch (userProfiles.get(caller)) {
+      case (null) { 0 };
+      case (?existing) { existing.xp };
+    };
+    userProfiles.add(caller, { username = profile.username; xp = existingXp });
   };
 
   // --- Room Functions ---
@@ -114,8 +111,7 @@ actor {
     let code = generateUniqueCode();
 
     let roomState : RoomState = {
-      var participants = Set.empty<Principal>();
-      var session = null;
+      participants = Set.empty<Principal>();
       creator = caller;
     };
 
@@ -139,34 +135,6 @@ actor {
     };
 
     roomState.participants.add(caller);
-  };
-
-  // Any participant can start a session. Timer becomes independent of host.
-  public shared ({ caller }) func startSession(code : Text, phase : Phase) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can start sessions");
-    };
-
-    switch (rooms.get(code)) {
-      case (null) { Runtime.trap("Room not found") };
-      case (?roomState) {
-        roomState.session := ?{
-          startTime = Time.now();
-          phase;
-          isPause = false;
-        };
-      };
-    };
-  };
-
-  public query ({ caller }) func getTimerState(code : Text) : async ?Session {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can get timer state");
-    };
-    switch (rooms.get(code)) {
-      case (null) { null };
-      case (?state) { state.session };
-    };
   };
 
   public query ({ caller }) func getCurrentCategory() : async ?RoomId {
@@ -204,8 +172,30 @@ actor {
     burntRoomsList.toArray();
   };
 
+  // --- XP Functions ---
+  // Called by the frontend every 30 continuous minutes the user remains in a room.
+  // Users may only award XP to themselves; admins may award XP to any user.
+  public shared ({ caller }) func awardXp(recipient : Principal, amount : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can trigger XP awards");
+    };
+    // A regular user may only award XP to themselves to prevent spoofing.
+    if (caller != recipient and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Users can only award XP to themselves");
+    };
+    let currentProfile = switch (userProfiles.get(recipient)) {
+      case (null) { Runtime.trap("Recipient profile not found") };
+      case (?profile) { profile };
+    };
+    let updatedProfile : UserProfile = {
+      username = currentProfile.username;
+      xp = currentProfile.xp + amount;
+    };
+    userProfiles.add(recipient, updatedProfile);
+  };
+
   // --- Event Functions ---
-  public shared ({ caller }) func storeEvent(name : Text, phase : ?Phase, date : Time.Time) : async UniqueCode {
+  public shared ({ caller }) func storeEvent(name : Text, date : Time.Time) : async UniqueCode {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can store events");
     };
@@ -213,7 +203,6 @@ actor {
     let event : Event = {
       name;
       date;
-      phase;
     };
 
     let uniqueCode = generateUniqueCode();

@@ -1,52 +1,45 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T14:06:38.387Z",
+  "generatedAt": "2026-02-27T10:55:28.497Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 2,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "After each focus session ends (before the break phase begins), display a small golden card icon in a corner of the screen that does not interrupt or overlap the timer display and does not block any interactive UI elements.",
+        "summary": "Investigate and fix the indefinite 'connecting' state that prevents users from entering the app. Identify where the connecting screen/state is triggered (likely in authentication flow, Internet Identity initialization, or actor setup) and ensure it transitions correctly to the authenticated state or displays a meaningful error with a retry option if the connection genuinely fails.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/room/GratitudeCard.tsx",
-          "frontend/src/pages/RoomPage.tsx"
+          "frontend/src/pages/LoginPage.tsx",
+          "frontend/src/components/auth/ProfileSetupModal.tsx",
+          "frontend/src/hooks/useGetCallerUserProfile.ts",
+          "frontend/src/pages/LobbyPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/room/GratitudeCard.tsx",
-          "frontend/src/pages/RoomPage.tsx"
+          "frontend/src/pages/LoginPage.tsx",
+          "frontend/src/pages/LobbyPage.tsx"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Implement a scratch card animation on the golden card icon when the user clicks it. The card expands or reveals a surface that the user appears to 'scratch off', progressively uncovering a short motivational/gratitude message beneath.",
+        "summary": "Add a timeout mechanism to the authentication/actor initialization flow so that if the 'connecting' state does not resolve within 15 seconds, the app exits the connecting state, displays a user-friendly error message, and offers a retry or logout option.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/room/ScratchCardOverlay.tsx",
-          "frontend/src/components/room/GratitudeCard.tsx"
+          "frontend/src/hooks/useConnectionTimeout.ts",
+          "frontend/src/components/auth/ConnectionErrorModal.tsx",
+          "frontend/src/pages/LoginPage.tsx",
+          "frontend/src/pages/LobbyPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/room/ScratchCardOverlay.tsx",
-          "frontend/src/components/room/GratitudeCard.tsx"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Maintain a predefined list of seven gratitude/motivational messages and display exactly one message per focus session, cycling through the list in a shuffled order. After all seven messages have been shown, reshuffle the list and repeat. The messages are: 'Many want to study but cannot afford internet. Thank your Lord.', 'Many are praying for opportunity. You are inside it. Alhamdulillah.', 'Not everyone gets time, access, and ability together. You do. Thank your Lord.', 'Learning is rizq.', 'You are in a position many wish for.', 'Some want education but doors were closed. Yours are open. Thank your creator.', 'Rabbi zidni ilma — My Lord, increase me in knowledge.'",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useGratitudeMessages.ts",
-          "frontend/src/pages/RoomPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useGratitudeMessages.ts",
-          "frontend/src/pages/RoomPage.tsx"
+          "frontend/src/hooks/useConnectionTimeout.ts",
+          "frontend/src/components/auth/ConnectionErrorModal.tsx",
+          "frontend/src/pages/LoginPage.tsx",
+          "frontend/src/pages/LobbyPage.tsx"
         ]
       }
     ]
@@ -56,12 +49,12 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/public/assets/generated/gold-card-icon.dim_128x128.png",
-    "frontend/src/components/room/GratitudeCard.tsx",
-    "frontend/src/components/room/ScratchCardOverlay.tsx",
-    "frontend/src/hooks/useGratitudeMessages.ts",
-    "frontend/src/index.css",
-    "frontend/src/pages/RoomPage.tsx",
+    "frontend/src/App.tsx",
+    "frontend/src/components/auth/ConnectionErrorModal.tsx",
+    "frontend/src/components/layout/AppLayout.tsx",
+    "frontend/src/hooks/useConnectionTimeout.ts",
+    "frontend/src/pages/LobbyPage.tsx",
+    "frontend/src/pages/LoginPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

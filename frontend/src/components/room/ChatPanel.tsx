@@ -1,142 +1,138 @@
-import { useState, useRef, useEffect } from 'react';
-import { Phase } from '../../backend';
-import { useStoreEvent } from '../../hooks/useQueries';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Send, MessageSquare } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Send } from 'lucide-react';
 
-interface ChatMessage {
+interface Message {
   id: string;
-  username: string;
+  author: string;
   text: string;
-  timestamp: number;
-  phase: Phase | null;
+  timestamp: Date;
+  isLocal: boolean;
 }
 
 interface ChatPanelProps {
-  roomCode: string;
-  phase: Phase | null;
-  username: string;
+  roomId: string;
 }
 
-export default function ChatPanel({ roomCode, phase, username }: ChatPanelProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputText, setInputText] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { mutate: storeEvent, isPending: isSending } = useStoreEvent();
-
-  const isFocus = phase === Phase.focus;
+export default function ChatPanel({ roomId: _roomId }: ChatPanelProps) {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '0',
+      author: 'System',
+      text: 'Welcome to the study room! Chat is always open.',
+      timestamp: new Date(),
+      isLocal: false,
+    },
+  ]);
+  const [input, setInput] = useState('');
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    const text = inputText.trim();
+  const sendMessage = () => {
+    const text = input.trim();
     if (!text) return;
-
-    const newMsg: ChatMessage = {
-      id: `${Date.now()}-${Math.random()}`,
-      username,
+    const msg: Message = {
+      id: Date.now().toString(),
+      author: 'You',
       text,
-      timestamp: Date.now(),
-      phase,
+      timestamp: new Date(),
+      isLocal: true,
     };
-
-    setMessages((prev) => [...prev, newMsg]);
-    setInputText('');
-
-    // Store in backend as event
-    storeEvent({
-      name: `[${username}]: ${text}`,
-      phase,
-      date: BigInt(Date.now()) * BigInt(1_000_000),
-      roomCode,
-    });
+    setMessages(prev => [...prev, msg]);
+    setInput('');
   };
 
-  const formatTime = (ts: number) => {
-    const d = new Date(ts);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  };
-
-  // A message is blurred if: current phase is focus AND (message was sent during focus OR current phase is focus)
-  const isMessageBlurred = (msg: ChatMessage) => {
-    return isFocus;
-  };
+  const formatTime = (d: Date) =>
+    d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-room-border flex-shrink-0">
-        <MessageSquare className="w-3.5 h-3.5 text-room-muted" />
-        <span className="text-xs font-mono tracking-wider uppercase text-room-muted">Chat</span>
-        {isFocus && (
-          <span className="ml-auto text-xs font-mono text-room-muted/50 italic">
-            Unlocks during break
-          </span>
-        )}
-      </div>
-
+    <div className="flex flex-col h-full">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
-            <MessageSquare className="w-6 h-6 text-room-muted/20" />
-            <p className="text-xs font-mono text-room-muted/40">
-              {isFocus ? 'Messages are blurred during focus' : 'No messages yet'}
-            </p>
+      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+        {messages.map(msg => (
+          <div
+            key={msg.id}
+            className={`flex flex-col gap-0.5 ${msg.isLocal ? 'items-end' : 'items-start'}`}
+          >
+            {!msg.isLocal && (
+              <span className="text-xs px-1" style={{ color: 'oklch(0.50 0.02 260)' }}>
+                {msg.author}
+              </span>
+            )}
+            <div
+              className="max-w-[85%] px-3 py-2 rounded-xl text-sm leading-relaxed"
+              style={
+                msg.isLocal
+                  ? {
+                      background: 'linear-gradient(135deg, oklch(0.72 0.18 195 / 0.25) 0%, oklch(0.65 0.20 210 / 0.2) 100%)',
+                      border: '1px solid oklch(0.72 0.18 195 / 0.3)',
+                      color: 'oklch(0.88 0.01 260)',
+                    }
+                  : msg.author === 'System'
+                  ? {
+                      background: 'oklch(0.18 0.022 260)',
+                      border: '1px solid oklch(0.26 0.025 260)',
+                      color: 'oklch(0.55 0.02 260)',
+                      fontStyle: 'italic',
+                    }
+                  : {
+                      background: 'oklch(0.19 0.022 260)',
+                      border: '1px solid oklch(0.26 0.025 260)',
+                      color: 'oklch(0.82 0.01 260)',
+                    }
+              }
+            >
+              {msg.text}
+            </div>
+            <span className="text-xs px-1" style={{ color: 'oklch(0.38 0.02 260)' }}>
+              {formatTime(msg.timestamp)}
+            </span>
           </div>
-        ) : (
-          messages.map((msg) => {
-            const blurred = isMessageBlurred(msg);
-            const isOwn = msg.username === username;
-            return (
-              <div
-                key={msg.id}
-                className={`flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-mono text-room-muted/60">{msg.username}</span>
-                  <span className="text-xs font-mono text-room-muted/30">{formatTime(msg.timestamp)}</span>
-                </div>
-                <div
-                  className={`max-w-[85%] px-3 py-1.5 rounded text-sm font-mono ${
-                    isOwn
-                      ? 'bg-focus-accent/15 text-room-text border border-focus-accent/20'
-                      : 'bg-room-input text-room-text border border-room-border'
-                  } ${blurred ? 'chat-blur-focus select-none' : ''}`}
-                  style={blurred ? { filter: 'blur(8px)', userSelect: 'none' } : undefined}
-                >
-                  {msg.text}
-                </div>
-              </div>
-            );
-          })
-        )}
-        <div ref={messagesEndRef} />
+        ))}
+        <div ref={bottomRef} />
       </div>
 
       {/* Input */}
-      <div className="flex-shrink-0 border-t border-room-border p-3">
-        <form onSubmit={handleSend} className="flex gap-2">
-          <Input
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder={isFocus ? 'Type a message (blurred during focus)...' : 'Type a message...'}
-            className="flex-1 bg-room-input border-room-border text-room-text font-mono text-xs placeholder:text-room-muted/40 focus-visible:ring-focus-accent/50 h-8"
-            maxLength={500}
+      <div
+        className="p-3 border-t"
+        style={{ borderColor: 'oklch(0.22 0.022 260)' }}
+      >
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+            placeholder="Type a message…"
+            className="flex-1 px-3 py-2 rounded-lg text-sm outline-none transition-all duration-200"
+            style={{
+              background: 'oklch(0.12 0.015 260)',
+              border: '1px solid oklch(0.24 0.022 260)',
+              color: 'oklch(0.88 0.01 260)',
+            }}
+            onFocus={e => {
+              e.currentTarget.style.borderColor = 'oklch(0.72 0.18 195 / 0.5)';
+              e.currentTarget.style.boxShadow = '0 0 0 2px oklch(0.72 0.18 195 / 0.1)';
+            }}
+            onBlur={e => {
+              e.currentTarget.style.borderColor = 'oklch(0.24 0.022 260)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           />
-          <Button
-            type="submit"
-            disabled={isSending || !inputText.trim()}
-            size="sm"
-            className="bg-focus-accent hover:bg-focus-accent/90 text-room-bg h-8 w-8 p-0 flex-shrink-0"
+          <button
+            onClick={sendMessage}
+            disabled={!input.trim()}
+            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 disabled:opacity-40 hover:scale-105"
+            style={{
+              background: 'linear-gradient(135deg, oklch(0.72 0.18 195) 0%, oklch(0.65 0.20 210) 100%)',
+              color: 'oklch(0.10 0.01 260)',
+            }}
           >
-            <Send className="w-3.5 h-3.5" />
-          </Button>
-        </form>
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

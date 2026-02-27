@@ -1,82 +1,56 @@
 {
   "kind": "build_request",
-  "title": "Add post-session gratitude scratch card feature",
-  "projectName": "FocusRoom",
-  "priority": "normal",
+  "title": "Fix indefinite 'connecting' state blocking app entry",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "After each focus session ends (before the break phase begins), display a small golden card icon in a corner of the screen that does not interrupt or overlap the timer display and does not block any interactive UI elements.",
+      "text": "Investigate and fix the indefinite 'connecting' state that prevents users from entering the app. Identify where the connecting screen/state is triggered (likely in authentication flow, Internet Identity initialization, or actor setup) and ensure it transitions correctly to the authenticated state or displays a meaningful error with a retry option if the connection genuinely fails.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-4"
         ],
         "quotes": [
-          "a golden card icon appears quietly in the corner. It doesn't interrupt the timer. It doesn't block the screen."
+          "It keeps saying connecting i can't get in"
         ]
       },
       "acceptanceCriteria": [
-        "The golden card icon appears only after a focus session completes, not during focus or break phases.",
-        "The icon is positioned in a corner (e.g., bottom-right) and is non-blocking — it does not cover the timer, chat, or other interactive controls.",
-        "The icon is visually styled in gold tones to draw subtle attention without demanding it.",
-        "The icon persists until the user clicks it or the next session starts."
+        "Users are no longer stuck indefinitely on a 'connecting' screen",
+        "After Internet Identity login, the app proceeds to the lobby or room page without hanging",
+        "If connection fails after a timeout, a clear error message is shown with a retry button",
+        "The connecting state resolves within a reasonable time (e.g., under 10 seconds on normal network)"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Implement a scratch card animation on the golden card icon when the user clicks it. The card expands or reveals a surface that the user appears to 'scratch off', progressively uncovering a short motivational/gratitude message beneath.",
+      "text": "Add a timeout mechanism to the authentication/actor initialization flow so that if the 'connecting' state does not resolve within 15 seconds, the app exits the connecting state, displays a user-friendly error message, and offers a retry or logout option.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-4"
         ],
         "quotes": [
-          "If the user clicks it, a scratch animation reveals a short message"
+          "It keeps saying connecting i can't get in"
         ]
       },
       "acceptanceCriteria": [
-        "Clicking the golden card icon triggers a scratch-reveal animation (e.g., canvas-based scratch effect or CSS animation that wipes/reveals content).",
-        "The animation feels satisfying and smooth — it should feel like scratching off a surface to reveal text underneath.",
-        "The message is hidden until the scratch animation completes or the user scrapes enough of the surface."
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Maintain a predefined list of seven gratitude/motivational messages and display exactly one message per focus session, cycling through the list in a shuffled order. After all seven messages have been shown, reshuffle the list and repeat. The messages are: 'Many want to study but cannot afford internet. Thank your Lord.', 'Many are praying for opportunity. You are inside it. Alhamdulillah.', 'Not everyone gets time, access, and ability together. You do. Thank your Lord.', 'Learning is rizq.', 'You are in a position many wish for.', 'Some want education but doors were closed. Yours are open. Thank your creator.', 'Rabbi zidni ilma — My Lord, increase me in knowledge.'",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "Use Any one of these for every session. Then shuffle it for the another session"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Exactly one message from the list is shown per completed focus session.",
-        "Messages are presented in a shuffled (randomized) order across sessions.",
-        "Once all seven messages have been shown, the list reshuffles and cycles again — no message repeats until all others have been shown.",
-        "The shuffle state persists across page reloads using localStorage so the sequence is not reset on refresh.",
-        "All seven messages appear verbatim as specified."
+        "A timeout is enforced on the connecting/initialization phase",
+        "After timeout, the user sees an error message (not a blank or frozen screen)",
+        "A 'Try Again' or 'Return to Login' button is available after timeout"
       ]
     }
   ],
   "constraints": [
-    "The golden card icon must not interrupt or overlap the timer display.",
-    "The card must not block any interactive screen elements.",
-    "Message content must remain exactly as specified — do not alter wording."
+    "Do not modify files in frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useActor.ts directly — use wrappers or fix consuming components instead"
   ],
   "nonGoals": [
-    "Backend storage of message history or shuffle state — localStorage is sufficient.",
-    "User-configurable message list.",
-    "Showing the card during the break or idle phases.",
-    "Any network requests related to the gratitude card."
+    "Changes to WebRTC signaling or video feed logic",
+    "Backend schema or data model changes",
+    "New UI features unrelated to the connection/auth flow"
   ],
   "imageRequirements": {
-    "required": [
-      "A small golden card icon with a shiny, embossed star or sparkle motif on a rich gold gradient background, square format (gold-card-icon.dim_128x128.png)"
-    ],
+    "required": [],
     "edits": []
   }
 }

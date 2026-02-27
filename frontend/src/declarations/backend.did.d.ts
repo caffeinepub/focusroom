@@ -10,14 +10,7 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export type Phase = { 'focus' : null } |
-  { 'pause' : null };
 export type RoomId = string;
-export interface Session {
-  'startTime' : Time,
-  'isPause' : boolean,
-  'phase' : Phase,
-}
 export interface Signal {
   'to' : Principal,
   'from' : Principal,
@@ -30,13 +23,14 @@ export type SignalType = { 'iceCandidate' : null } |
   { 'answer' : null };
 export type Time = bigint;
 export type UniqueCode = string;
-export interface UserProfile { 'username' : string }
+export interface UserProfile { 'xp' : bigint, 'username' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'awardXp' : ActorMethod<[Principal, bigint], undefined>,
   'clearSignals' : ActorMethod<[string], undefined>,
   'createRoom' : ActorMethod<[], string>,
   'getBurntCategories' : ActorMethod<[], Array<RoomId>>,
@@ -45,7 +39,6 @@ export interface _SERVICE {
   'getCurrentCategory' : ActorMethod<[], [] | [RoomId]>,
   'getPreviousCategories' : ActorMethod<[], Array<RoomId>>,
   'getRoomParticipants' : ActorMethod<[string], Array<[Principal, string]>>,
-  'getTimerState' : ActorMethod<[string], [] | [Session]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'joinRoom' : ActorMethod<[string], undefined>,
@@ -55,8 +48,7 @@ export interface _SERVICE {
     [string, Principal, SignalType, string],
     undefined
   >,
-  'startSession' : ActorMethod<[string, Phase], undefined>,
-  'storeEvent' : ActorMethod<[string, [] | [Phase], Time], UniqueCode>,
+  'storeEvent' : ActorMethod<[string, Time], UniqueCode>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

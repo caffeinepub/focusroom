@@ -1,71 +1,68 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add post-session gratitude scratch card feature",
+  "title": "Fix indefinite 'connecting' state blocking app entry",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Display a golden card icon in the corner after each focus session ends, positioned to avoid blocking the timer or interactive UI elements",
+      "summary": "Fix indefinite 'connecting' state in authentication flow to ensure users can enter the app",
       "acceptanceCriteria": [
-        "The golden card icon appears only after a focus session completes, not during focus or break phases.",
-        "The icon is positioned in a corner (e.g., bottom-right) and is non-blocking — it does not cover the timer, chat, or other interactive controls.",
-        "The icon is visually styled in gold tones to draw subtle attention without demanding it.",
-        "The icon persists until the user clicks it or the next session starts."
+        "Users are no longer stuck indefinitely on a 'connecting' screen",
+        "After Internet Identity login, the app proceeds to the lobby or room page without hanging",
+        "If connection fails after a timeout, a clear error message is shown with a retry button",
+        "The connecting state resolves within a reasonable time (e.g., under 10 seconds on normal network)"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/room/GratitudeCard.tsx",
-          "operation": "create",
-          "description": "Create a new GratitudeCard component that displays a golden card icon in a non-blocking corner position. The component should accept props for visibility state (shown only after focus session ends), onClick handler to trigger the scratch animation, and current timer phase. Position the icon in the bottom-right corner using fixed positioning with appropriate spacing from edges. Use the generated image at frontend/public/assets/generated/gold-card-icon.dim_128x128.png as the card icon. Apply gold/amber styling to make it visually appealing but subtle."
+          "path": "frontend/src/pages/LoginPage.tsx",
+          "operation": "modify",
+          "description": "Add connection state monitoring and timeout handling. Display a connecting indicator when loginStatus is 'logging-in', and show a timeout error message with a retry button if the login process exceeds 15 seconds without completing. Ensure the UI transitions properly from connecting to authenticated or error states."
         },
         {
-          "path": "frontend/src/pages/RoomPage.tsx",
+          "path": "frontend/src/components/auth/ProfileSetupModal.tsx",
           "operation": "modify",
-          "description": "Wire the GratitudeCard component into RoomPage. Add state to track whether the card should be shown (set to true when a focus session completes, false when clicked or new session starts). Pass the current timer phase and visibility state to GratitudeCard. Position the component so it does not overlap with the timer display, chat panel, or other interactive elements. Ensure the card appears immediately after the focus phase ends but before the break phase begins."
+          "description": "Prevent premature display of the profile setup modal by checking that the actor is fully initialized and the user profile query has completed (isFetched is true). Use the isLoading state from useGetCallerUserProfile to avoid showing the modal while the connection is still being established."
+        },
+        {
+          "path": "frontend/src/hooks/useGetCallerUserProfile.ts",
+          "operation": "modify",
+          "description": "Ensure the hook properly reflects actor dependency and prevents premature queries. Return custom isLoading state that includes both actorFetching and query.isLoading. Set enabled to only trigger the query when actor is available and not fetching. This prevents the profile query from running before authentication is complete."
+        },
+        {
+          "path": "frontend/src/pages/LobbyPage.tsx",
+          "operation": "modify",
+          "description": "Add connection state checks before rendering lobby content. Display a loading indicator while the actor is initializing (actorFetching is true), and show an error state with a retry option if the actor fails to initialize after a timeout. Ensure users cannot interact with lobby features until the actor is fully ready."
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Implement a scratch-off animation that reveals a motivational message when the user clicks the golden card icon",
+      "summary": "Add timeout mechanism to authentication and actor initialization with user-friendly error recovery",
       "acceptanceCriteria": [
-        "Clicking the golden card icon triggers a scratch-reveal animation (e.g., canvas-based scratch effect or CSS animation that wipes/reveals content).",
-        "The animation feels satisfying and smooth — it should feel like scratching off a surface to reveal text underneath.",
-        "The message is hidden until the scratch animation completes or the user scrapes enough of the surface."
+        "A timeout is enforced on the connecting/initialization phase",
+        "After timeout, the user sees an error message (not a blank or frozen screen)",
+        "A 'Try Again' or 'Return to Login' button is available after timeout"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/room/ScratchCardOverlay.tsx",
+          "path": "frontend/src/hooks/useConnectionTimeout.ts",
           "operation": "create",
-          "description": "Create a ScratchCardOverlay component that implements a canvas-based scratch-off animation. When mounted, expand the card to fill a modal/overlay, display a scratchable canvas surface over the message text, and allow the user to reveal the message by mouse/touch interaction. Track the percentage of surface scratched and auto-reveal the message when a threshold (e.g., 60%) is reached. Use smooth canvas rendering for the scratch effect with gold/metallic gradient as the scratch layer. Accept props for the message text to reveal and an onClose callback."
+          "description": "Create a custom hook that monitors connection state and enforces a 15-second timeout. The hook should track when a connection attempt starts (when loginStatus changes to 'logging-in' or actorFetching becomes true), start a timer, and return a timeout error state if the connection does not complete within 15 seconds. Export a clearTimeout function for manual reset. Return { hasTimedOut, timeoutError, clearConnectionTimeout }."
         },
         {
-          "path": "frontend/src/components/room/GratitudeCard.tsx",
-          "operation": "modify",
-          "description": "Add state to track whether the scratch overlay is open. When the golden card icon is clicked, trigger the opening of the ScratchCardOverlay component with the current session's message. Pass a callback to close the overlay and hide the card icon after the message is revealed or dismissed."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Maintain a predefined list of seven gratitude messages, display one per session in shuffled order, and persist shuffle state across page reloads using localStorage",
-      "acceptanceCriteria": [
-        "Exactly one message from the list is shown per completed focus session.",
-        "Messages are presented in a shuffled (randomized) order across sessions.",
-        "Once all seven messages have been shown, the list reshuffles and cycles again — no message repeats until all others have been shown.",
-        "The shuffle state persists across page reloads using localStorage so the sequence is not reset on refresh.",
-        "All seven messages appear verbatim as specified."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/hooks/useGratitudeMessages.ts",
+          "path": "frontend/src/components/auth/ConnectionErrorModal.tsx",
           "operation": "create",
-          "description": "Create a custom React hook useGratitudeMessages that manages the seven predefined gratitude messages. Store the messages as a constant array with the exact text: 'Many want to study but cannot afford internet. Thank your Lord.', 'Many are praying for opportunity. You are inside it. Alhamdulillah.', 'Not everyone gets time, access, and ability together. You do. Thank your Lord.', 'Learning is rizq.', 'You are in a position many wish for.', 'Some want education but doors were closed. Yours are open. Thank your creator.', 'Rabbi zidni ilma — My Lord, increase me in knowledge.' Implement shuffle logic using Fisher-Yates algorithm. Persist the shuffled queue and current index to localStorage under a key like 'gratitude-messages-state'. On mount, restore state from localStorage or initialize with a new shuffle. Expose a getNextMessage() function that returns the next message in the queue, advances the index, and reshuffles when all messages have been shown. Also expose the current message for display."
+          "description": "Create a modal component that displays connection timeout errors with user-friendly messaging. Show the error message from useConnectionTimeout, explain that the connection attempt failed, and provide two action buttons: 'Try Again' (calls clearConnectionTimeout and retries authentication) and 'Return to Login' (calls logout to reset state). Style consistently with the existing ProfileSetupModal using shadcn/ui components."
         },
         {
-          "path": "frontend/src/pages/RoomPage.tsx",
+          "path": "frontend/src/pages/LoginPage.tsx",
           "operation": "modify",
-          "description": "Integrate the useGratitudeMessages hook into RoomPage. When a focus session completes, call getNextMessage() to retrieve the message for this session. Pass the current message to the GratitudeCard component so it can display it in the scratch overlay. Ensure the message is fetched only once per completed focus session and not on every render."
+          "description": "Integrate useConnectionTimeout hook and display ConnectionErrorModal when hasTimedOut is true. Pass the timeout error and recovery actions (retry via login() after clearConnectionTimeout, or logout via clear()) to the modal. Ensure the modal is shown above the login UI and blocks interaction until the user takes action."
+        },
+        {
+          "path": "frontend/src/pages/LobbyPage.tsx",
+          "operation": "modify",
+          "description": "Integrate useConnectionTimeout hook to monitor actor initialization timeout. Display ConnectionErrorModal when timeout occurs during lobby loading. Provide recovery actions that allow the user to retry actor initialization or return to the login page. Ensure the timeout is cleared when the actor successfully initializes."
         }
       ]
     }
