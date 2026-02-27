@@ -1,18 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, CameraOff, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface CameraPreviewProps {
   username: string;
+  onStreamChange?: (stream: MediaStream | null) => void;
 }
 
 type CameraState = 'idle' | 'requesting' | 'active' | 'denied' | 'error';
 
-export default function CameraPreview({ username }: CameraPreviewProps) {
+export default function CameraPreview({ username, onStreamChange }: CameraPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraState, setCameraState] = useState<CameraState>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
+
+  // Notify parent when stream changes
+  const notifyStreamChange = useCallback(
+    (stream: MediaStream | null) => {
+      onStreamChange?.(stream);
+    },
+    [onStreamChange]
+  );
 
   // Cleanup stream on unmount
   useEffect(() => {
@@ -21,10 +30,11 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
+      notifyStreamChange(null);
     };
-  }, []);
+  }, [notifyStreamChange]);
 
-  const stopStreamTracks = () => {
+  const stopStreamTracks = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -32,7 +42,7 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-  };
+  }, []);
 
   const startCamera = async () => {
     // getUserMedia MUST be the very first async call — called directly in the
@@ -76,6 +86,7 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
             'An unexpected error occurred accessing the camera. Please try again.'
         );
       }
+      notifyStreamChange(null);
       return;
     }
 
@@ -96,13 +107,15 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
 
     setCameraState('active');
     setErrorMessage('');
+    notifyStreamChange(stream);
   };
 
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     stopStreamTracks();
     setCameraState('idle');
     setErrorMessage('');
-  };
+    notifyStreamChange(null);
+  }, [stopStreamTracks, notifyStreamChange]);
 
   const retry = () => {
     setErrorMessage('');
@@ -210,26 +223,31 @@ export default function CameraPreview({ username }: CameraPreviewProps) {
         <Button
           onClick={handleToggle}
           disabled={isLoading}
-          variant="ghost"
           size="sm"
-          className="w-full text-xs font-mono text-room-muted hover:text-room-text hover:bg-room-input gap-1.5"
+          variant={isActive ? 'outline' : 'default'}
+          className="w-full font-mono text-xs"
         >
           {isLoading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <>
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              Requesting…
+            </>
           ) : hasError ? (
-            <RefreshCw className="w-3.5 h-3.5" />
+            <>
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              Retry Camera
+            </>
           ) : isActive ? (
-            <CameraOff className="w-3.5 h-3.5" />
+            <>
+              <CameraOff className="w-3.5 h-3.5 mr-1.5" />
+              Turn Off Camera
+            </>
           ) : (
-            <Camera className="w-3.5 h-3.5" />
+            <>
+              <Camera className="w-3.5 h-3.5 mr-1.5" />
+              Turn On Camera
+            </>
           )}
-          {isLoading
-            ? 'Waiting for permission…'
-            : hasError
-            ? 'Try Again'
-            : isActive
-            ? 'Turn Off Camera'
-            : 'Turn On Camera'}
         </Button>
       </div>
     </div>

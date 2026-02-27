@@ -1,169 +1,33 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 13,
-  "summary": "A private social study platform where friends join private rooms and study together in real time using structured Pomodoro-style sessions (25 min focus / 5 min break). Core features include: always-blurred cameras (silhouette style, blur cannot be removed), blurred chat during focus that unlocks during break, pre-session study goal declarations with completion tracking, XP/streak system with XP loss for early exits, and a private in-room leaderboard. Design is minimal and dark-themed. Built as a basic working version first.",
-  "architectural_notes": [
-    "Dark-themed, minimal, distraction-free UI using React",
-    "Server-side time used for session synchronization to keep all participants in sync",
-    "Camera blur applied client-side via CSS/canvas and cannot be toggled off by users",
-    "Camera permission errors should be caught and surfaced with a clear user-facing message guiding them to allow camera access in browser settings",
-    "Camera permission: do not call enumerateDevices or any pre-checks before getUserMedia — call getUserMedia directly so Chrome shows the native permission popup immediately"
-  ],
-  "known_issues": [
-    "Room creation is broken after the camera permission fix deployment",
-    "Camera permission popup still not appearing after v5 deployment — browser native permission prompt is not being triggered when user clicks camera toggle button"
-  ],
-  "isFixRequest": true,
+  "projectStateVersion": 3,
+  "summary": "A focus/study app with session tracking, camera-based peer connections, and motivational gratitude card feature after each focus session.",
+  "architectural_notes": [],
+  "known_issues": [],
+  "isFixRequest": false,
+  "imageRequirements": "## Required Images\n- A small golden card icon with a shiny, embossed star or sparkle motif on a rich gold gradient background, square format (gold-card-icon.dim_128x128.png)",
   "existing_features": [
     {
-      "id": "feature-implement-internet-identity-authentication-so-users-can-log-in-and-are-assigned-a-persistent-username-editable-once-on-first-login-store-principal-to-username-mapping-in-the-backend",
-      "title": "Implement Internet Identity authentication so users can log in and are assigned a persistent username (editable once on first login). Store principal-to-username mapping in the backend.",
+      "id": "feature-after-each-focus-session-ends-before-the-break-phase-begins-display-a-small-golden-card-icon-in-a-corner-of-the-screen-that-does-not-interrupt-or-overlap-the-timer-display-and-does-not-block-any-interactive-ui-elements",
+      "title": "After each focus session ends (before the break phase begins), display a small golden card icon in a corner of the screen that does not interrupt or overlap the timer display and does not block any interactive UI elements.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-allow-authenticated-users-to-create-a-private-study-room-which-generates-a-unique-6-character-join-code-store-room-state-participants-session-state-messages-goals-xp-in-the-backend-actor",
-      "title": "Allow authenticated users to create a private study room, which generates a unique 6-character join code. Store room state (participants, session state, messages, goals, XP) in the backend actor.",
+      "id": "feature-implement-a-scratch-card-animation-on-the-golden-card-icon-when-the-user-clicks-it-the-card-expands-or-reveals-a-surface-that-the-user-appears-to-scratch-off-progressively-uncovering-a-short-motivational-gratitude-message-beneath",
+      "title": "Implement a scratch card animation on the golden card icon when the user clicks it. The card expands or reveals a surface that the user appears to 'scratch off', progressively uncovering a short motivational/gratitude message beneath.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-allow-users-to-join-an-existing-room-by-entering-a-6-character-code-display-a-list-of-current-participants-in-the-room-showing-each-participant-s-username-and-camera-status-active-inactive",
-      "title": "Allow users to join an existing room by entering a 6-character code. Display a list of current participants in the room, showing each participant's username and camera status (Active / Inactive).",
+      "id": "feature-maintain-a-predefined-list-of-seven-gratitude-motivational-messages-and-display-exactly-one-message-per-focus-session-cycling-through-the-list-in-a-shuffled-order-after-all-seven-messages-have-been-shown-reshuffle-the-list-and-repeat-the-messages-are-many-want-to-study-but-cannot-afford-internet-thank-your-lord-many-are-praying-for-opportunity-you-are-inside-it-alhamdulillah-not-everyone-gets-time-access-and-ability-together-you-do-thank-your-lord-learning-is-rizq-you-are-in-a-position-many-wish-for-some-want-education-but-doors-were-closed-yours-are-open-thank-your-creator-rabbi-zidni-ilma-my-lord-increase-me-in-knowledge",
+      "title": "Maintain a predefined list of seven gratitude/motivational messages and display exactly one message per focus session, cycling through the list in a shuffled order. After all seven messages have been shown, reshuffle the list and repeat. The messages are: 'Many want to study but cannot afford internet. Thank your Lord.', 'Many are praying for opportunity. You are inside it. Alhamdulillah.', 'Not everyone gets time, access, and ability together. You do. Thank your Lord.', 'Learning is rizq.', 'You are in a position many wish for.', 'Some want education but doors were closed. Yours are open. Thank your creator.', 'Rabbi zidni ilma — My Lord, increase me in knowledge.'",
       "reqIds": [
         "REQ-3"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-a-server-side-pomodoro-timer-stored-in-the-backend-25-minute-focus-phase-followed-by-a-5-minute-break-phase-cycling-automatically-the-host-starts-the-first-session-the-backend-stores-the-session-start-timestamp-and-phase-so-all-clients-derive-the-same-timer-state-by-polling",
-      "title": "Implement a server-side Pomodoro timer stored in the backend: 25-minute Focus phase followed by a 5-minute Break phase, cycling automatically. The host starts the first session. The backend stores the session start timestamp and phase so all clients derive the same timer state by polling.",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-local-camera-access-via-browser-mediadevices-api-when-a-user-enables-their-camera-display-a-permanent-css-blur-filter-e-g-blur-12px-brightness-contrast-adjustment-creating-a-soft-silhouette-there-must-be-no-ui-control-or-mechanism-to-remove-the-blur-show-active-or-inactive-status-badge-per-participant-tile",
-      "title": "Implement local camera access via browser MediaDevices API. When a user enables their camera, display a permanent CSS blur filter (e.g. blur(12px) + brightness/contrast adjustment) creating a soft silhouette. There must be no UI control or mechanism to remove the blur. Show 'Active' or 'Inactive' status badge per participant tile.",
-      "reqIds": [
-        "REQ-5"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-the-blurred-chat-feature-during-focus-phase-users-can-type-and-send-messages-but-every-message-in-the-chat-list-is-rendered-with-a-css-blur-filter-so-the-text-is-unreadable-during-break-phase-all-messages-including-those-sent-during-focus-become-fully-visible-and-readable-new-messages-sent-during-break-are-visible-immediately",
-      "title": "Implement the blurred chat feature. During Focus phase, users can type and send messages, but every message in the chat list is rendered with a CSS blur filter so the text is unreadable. During Break phase, all messages (including those sent during Focus) become fully visible and readable. New messages sent during Break are visible immediately.",
-      "reqIds": [
-        "REQ-6"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-before-each-focus-session-begins-after-break-ends-or-before-the-first-session-prompt-each-participant-to-type-a-study-goal-for-the-upcoming-session-the-goal-is-stored-per-user-per-session-in-the-backend-and-displayed-visibly-in-the-room-ui-throughout-the-focus-phase-at-the-end-of-the-focus-session-each-user-is-shown-their-goal-and-must-mark-it-as-complete-or-incomplete",
-      "title": "Before each Focus session begins (after Break ends or before the first session), prompt each participant to type a study goal for the upcoming session. The goal is stored per user per session in the backend and displayed visibly in the room UI throughout the Focus phase. At the end of the Focus session, each user is shown their goal and must mark it as Complete or Incomplete.",
-      "reqIds": [
-        "REQ-7"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-a-simple-xp-system-in-the-backend-award-50-xp-for-completing-a-full-focus-session-20-xp-for-marking-a-goal-as-complete-deduct-30-xp-if-a-user-leaves-the-room-mid-focus-session-xp-totals-per-user-are-persisted-in-the-backend-display-each-participant-s-xp-in-a-private-in-room-leaderboard-sorted-by-xp-descending",
-      "title": "Implement a simple XP system in the backend. Award 50 XP for completing a full Focus session, 20 XP for marking a goal as Complete. Deduct 30 XP if a user leaves the room mid-Focus session. XP totals per user are persisted in the backend. Display each participant's XP in a private in-room leaderboard sorted by XP descending.",
-      "reqIds": [
-        "REQ-8"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-apply-a-minimal-dark-themed-distraction-free-visual-design-consistently-across-the-entire-app-use-a-near-black-background-e-g-0d0d0d-111-muted-neutral-accents-clean-monospaced-or-sans-serif-typography-generous-whitespace-and-subtle-dim-borders-avoid-bright-colors-except-for-a-single-soft-accent-e-g-muted-amber-or-sage-green-used-only-for-key-interactive-elements-like-the-timer-and-cta-buttons-keep-the-layout-focused-and-uncluttered",
-      "title": "Apply a minimal, dark-themed, distraction-free visual design consistently across the entire app. Use a near-black background (e.g. #0d0d0d / #111), muted neutral accents, clean monospaced or sans-serif typography, generous whitespace, and subtle dim borders. Avoid bright colors except for a single soft accent (e.g. muted amber or sage green) used only for key interactive elements like the timer and CTA buttons. Keep the layout focused and uncluttered.",
-      "reqIds": [
-        "REQ-9"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-fix-the-camera-permission-denied-error-in-the-camerapreview-component-enumerate-available-video-devices-using-navigator-mediadevices-enumeratedevices-before-calling-getusermedia-and-request-camera-access-with-explicit-constraints-video-true-audio-false-if-permission-is-denied-display-a-clear-actionable-error-message-instructing-the-user-to-allow-camera-access-in-their-browser-site-settings-handle-the-notallowederror-notfounderror-and-overconstrainederror-domexception-cases-explicitly-remove-any-constraints-e-g-specific-deviceid-or-resolution-that-might-cause-silent-rejections",
-      "title": "Fix the camera permission denied error in the CameraPreview component. Enumerate available video devices using `navigator.mediaDevices.enumerateDevices()` before calling `getUserMedia`, and request camera access with explicit constraints `{ video: true, audio: false }`. If permission is denied, display a clear, actionable error message instructing the user to allow camera access in their browser site settings. Handle the `NotAllowedError`, `NotFoundError`, and `OverconstrainedError` DOMException cases explicitly. Remove any constraints (e.g. specific deviceId or resolution) that might cause silent rejections.",
-      "reqIds": [
-        "REQ-10"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-instant-rejoin-when-a-user-successfully-joins-a-room-persist-the-room-code-to-localstorage-key-focusroom-last-room-on-the-lobbypage-and-on-app-load-check-for-this-stored-code-and-automatically-attempt-to-rejoin-the-room-without-requiring-the-user-to-re-type-the-code-if-the-room-no-longer-exists-or-the-join-fails-clear-the-stored-code-and-show-the-normal-lobby-ui",
-      "title": "Implement Instant Rejoin: when a user successfully joins a room, persist the room code to `localStorage` (key: `focusroom_last_room`). On the LobbyPage and on app load, check for this stored code and automatically attempt to rejoin the room without requiring the user to re-type the code. If the room no longer exists or the join fails, clear the stored code and show the normal lobby UI.",
-      "reqIds": [
-        "REQ-11"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-ensure-auto-session-resume-the-pomodoro-timer-in-the-backend-must-continue-running-based-purely-on-the-stored-start-timestamp-and-phase-regardless-of-whether-the-original-host-is-connected-remove-any-host-presence-check-or-host-dependency-from-timer-progression-any-participant-not-just-the-host-should-be-able-to-start-the-first-session-once-started-the-timer-runs-independently-on-the-server-and-all-clients-derive-state-from-it-by-polling",
-      "title": "Ensure Auto Session Resume: the Pomodoro timer in the backend must continue running based purely on the stored start timestamp and phase, regardless of whether the original host is connected. Remove any host-presence check or host-dependency from timer progression. Any participant (not just the host) should be able to start the first session. Once started, the timer runs independently on the server and all clients derive state from it by polling.",
-      "reqIds": [
-        "REQ-12"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-ambient-study-sounds-include-three-looping-audio-tracks-rain-library-cafe-noise-white-noise-as-static-assets-under-frontend-public-assets-sounds-add-an-optional-sound-toggle-ui-in-the-roompage-a-small-unobtrusive-button-or-panel-e-g-a-speaker-icon-with-a-dropdown-that-lets-the-user-select-one-of-the-three-sounds-or-silence-the-selected-sound-loops-at-low-volume-default-30-the-toggle-is-only-active-during-focus-phase-sound-preference-persists-in-localstorage-for-the-session",
-      "title": "Add Ambient Study Sounds: include three looping audio tracks (rain, library/cafe noise, white noise) as static assets under `frontend/public/assets/sounds/`. Add an optional sound toggle UI in the RoomPage — a small, unobtrusive button or panel (e.g. a speaker icon with a dropdown) that lets the user select one of the three sounds or silence. The selected sound loops at low volume (default ~30%). The toggle is only active during focus phase. Sound preference persists in localStorage for the session.",
-      "reqIds": [
-        "REQ-13"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-distraction-lock-indicator-use-the-page-visibility-api-document-addeventlistener-visibilitychange-to-detect-when-the-user-switches-away-from-the-tab-during-the-focus-phase-if-the-user-is-away-for-more-than-10-consecutive-seconds-during-focus-show-a-small-pulsing-yellow-warning-dot-in-a-fixed-corner-of-the-roompage-ui-the-dot-disappears-when-the-user-returns-to-the-tab-do-not-show-this-indicator-during-break-phase-or-when-the-session-is-idle",
-      "title": "Implement Distraction Lock Indicator: use the Page Visibility API (`document.addEventListener('visibilitychange', ...)`) to detect when the user switches away from the tab during the Focus phase. If the user is away for more than 10 consecutive seconds during focus, show a small pulsing yellow warning dot in a fixed corner of the RoomPage UI. The dot disappears when the user returns to the tab. Do not show this indicator during Break phase or when the session is idle.",
-      "reqIds": [
-        "REQ-14"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-smooth-micro-animations-to-the-timerdisplay-component-1-render-an-svg-or-canvas-shrinking-circle-ring-that-depletes-clockwise-in-sync-with-the-countdown-full-circle-at-phase-start-empty-at-phase-end-2-when-a-focus-session-starts-apply-a-brief-soft-glow-animation-e-g-a-radial-box-shadow-or-drop-shadow-pulse-on-the-timer-area-using-the-existing-accent-color-that-fades-out-over-1-5-seconds-implement-these-using-css-keyframe-animations-and-or-react-state-transitions-keep-the-animations-subtle-and-consistent-with-the-existing-dark-minimal-design",
-      "title": "Add smooth micro-animations to the TimerDisplay component: (1) render an SVG or canvas shrinking circle/ring that depletes clockwise in sync with the countdown — full circle at phase start, empty at phase end; (2) when a Focus session starts, apply a brief soft glow animation (e.g. a radial box-shadow or drop-shadow pulse on the timer area using the existing accent color) that fades out over ~1.5 seconds. Implement these using CSS keyframe animations and/or React state transitions. Keep the animations subtle and consistent with the existing dark minimal design.",
-      "reqIds": [
-        "REQ-15"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-in-the-camerapreview-component-when-the-user-clicks-the-camera-toggle-button-immediately-call-navigator-mediadevices-getusermedia-video-true-audio-false-directly-without-any-prior-enumeratedevices-call-or-device-filtering-so-that-the-browser-s-native-permission-popup-is-triggered-every-time-the-user-clicks-the-button-do-not-gate-the-getusermedia-call-behind-any-async-pre-checks-that-could-silently-prevent-the-popup-from-appearing-if-the-call-succeeds-display-the-blurred-camera-feed-as-before-if-it-fails-display-an-error-message-asking-the-user-to-allow-camera-access-when-the-browser-prompt-appears",
-      "title": "In the CameraPreview component, when the user clicks the camera toggle button, immediately call `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` directly — without any prior `enumerateDevices()` call or device filtering — so that the browser's native permission popup is triggered every time the user clicks the button. Do not gate the `getUserMedia` call behind any async pre-checks that could silently prevent the popup from appearing. If the call succeeds, display the blurred camera feed as before. If it fails, display an error message asking the user to allow camera access when the browser prompt appears.",
-      "reqIds": [
-        "REQ-16"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-fix-the-room-creation-flow-on-the-lobbypage-the-create-room-action-is-currently-broken-investigate-and-repair-the-createroom-mutation-in-usequeries-ts-and-its-invocation-in-lobbypage-tsx-ensure-that-calling-createroom-successfully-invokes-the-backend-actor-returns-a-valid-6-character-room-code-persists-it-to-localstorage-under-the-key-focusroom-last-room-and-navigates-the-user-to-the-room-page-handle-and-surface-any-error-states-e-g-actor-not-ready-backend-trap-network-failure-with-a-clear-inline-error-message-on-the-lobbypage-so-the-user-understands-what-went-wrong",
-      "title": "Fix the room creation flow on the LobbyPage. The 'Create Room' action is currently broken — investigate and repair the `createRoom` mutation in `useQueries.ts` and its invocation in `LobbyPage.tsx`. Ensure that calling `createRoom` successfully invokes the backend actor, returns a valid 6-character room code, persists it to `localStorage` under the key `focusroom_last_room`, and navigates the user to the room page. Handle and surface any error states (e.g. actor not ready, backend trap, network failure) with a clear inline error message on the LobbyPage so the user understands what went wrong.",
-      "reqIds": [
-        "REQ-17"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-rewrite-the-camera-toggle-logic-in-frontend-src-components-room-camerapreview-tsx-from-scratch-when-the-user-clicks-the-camera-toggle-button-the-handler-must-1-stop-any-existing-media-stream-tracks-first-2-call-navigator-mediadevices-getusermedia-video-true-audio-false-directly-and-immediately-with-no-prior-async-calls-no-enumeratedevices-no-device-filtering-and-no-feature-detection-guards-that-could-silently-abort-the-call-3-on-success-assign-the-stream-to-the-video-element-ref-via-videoref-current-srcobject-and-call-videoref-current-play-4-on-failure-catch-the-error-set-an-error-state-string-and-display-a-human-readable-message-to-the-user-e-g-camera-access-was-denied-please-allow-camera-access-in-your-browser-settings-and-try-again-apply-a-permanent-css-blur-filter-blur-12px-with-brightness-contrast-to-the-video-element-via-inline-style-or-a-dedicated-css-class-never-conditionally-remove-the-blur-ensure-the-component-properly-cleans-up-the-media-stream-stops-all-tracks-on-unmount-remove-all-legacy-code-paths-from-previous-fix-attempts-enumeratedevices-checks-overconstrained-retries-deviceid-constraints-that-may-be-preventing-the-native-browser-permission-popup-from-appearing",
-      "title": "Rewrite the camera toggle logic in `frontend/src/components/room/CameraPreview.tsx` from scratch. When the user clicks the camera toggle button, the handler must: (1) stop any existing media stream tracks first; (2) call `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` directly and immediately — with no prior async calls, no `enumerateDevices()`, no device filtering, and no feature-detection guards that could silently abort the call; (3) on success, assign the stream to the video element ref via `videoRef.current.srcObject` and call `videoRef.current.play()`; (4) on failure, catch the error, set an error state string, and display a human-readable message to the user (e.g. 'Camera access was denied. Please allow camera access in your browser settings and try again.'). Apply a permanent CSS blur filter (`blur(12px)` with brightness/contrast) to the `<video>` element via inline style or a dedicated CSS class — never conditionally remove the blur. Ensure the component properly cleans up the media stream (stops all tracks) on unmount. Remove all legacy code paths from previous fix attempts (enumerateDevices checks, overconstrained retries, deviceId constraints) that may be preventing the native browser permission popup from appearing.",
-      "reqIds": [
-        "REQ-18"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-completely-replace-the-camera-toggle-handler-in-frontend-src-components-room-camerapreview-tsx-the-new-implementation-must-1-attach-an-onclick-handler-directly-on-the-toggle-button-that-synchronously-and-without-any-awaited-pre-checks-calls-navigator-mediadevices-getusermedia-video-true-audio-false-as-the-very-first-asynchronous-operation-ensuring-the-browser-native-permission-popup-is-triggered-2-stop-all-tracks-on-any-existing-stream-before-requesting-a-new-one-3-on-success-assign-the-stream-to-the-video-element-ref-videoref-current-srcobject-stream-and-call-videoref-current-play-4-on-failure-set-an-error-state-and-render-the-message-camera-access-was-denied-please-allow-camera-access-when-the-browser-prompt-appears-and-try-again-5-apply-a-permanent-inline-css-blur-filter-filter-blur-12px-brightness-0-8-contrast-1-2-to-the-video-element-at-all-times-never-remove-or-toggle-it-6-stop-all-tracks-and-nullify-the-stream-on-component-unmount-strip-out-every-prior-attempt-s-code-no-enumeratedevices-no-device-id-constraints-no-resolution-constraints-no-feature-detection-guards-no-try-catch-blocks-wrapping-the-getusermedia-call-itself-before-the-call-is-made",
-      "title": "Completely replace the camera toggle handler in `frontend/src/components/room/CameraPreview.tsx`. The new implementation must: (1) attach an onClick handler directly on the toggle button that — synchronously and without any awaited pre-checks — calls `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` as the very first asynchronous operation, ensuring the browser native permission popup is triggered; (2) stop all tracks on any existing stream before requesting a new one; (3) on success, assign the stream to the video element ref (`videoRef.current.srcObject = stream`) and call `videoRef.current.play()`; (4) on failure, set an error state and render the message 'Camera access was denied. Please allow camera access when the browser prompt appears and try again.'; (5) apply a permanent inline CSS blur filter (`filter: 'blur(12px) brightness(0.8) contrast(1.2)'`) to the `<video>` element at all times — never remove or toggle it; (6) stop all tracks and nullify the stream on component unmount. Strip out every prior attempt's code: no `enumerateDevices`, no device-ID constraints, no resolution constraints, no feature-detection guards, no try/catch blocks wrapping the `getUserMedia` call itself before the call is made.",
-      "reqIds": [
-        "REQ-19"
       ],
       "version": 1
     }
@@ -171,73 +35,7 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "User authentication with email or Google login, basic profile with username",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Create and join private rooms via code or link, host can start session, participant list visible",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-3",
-      "summary": "Synchronized Pomodoro timer (25 min focus / 5 min break, auto-switch, server-synced)",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-4",
-      "summary": "Always-blurred camera (silhouette style, blur cannot be removed, Active/Inactive status)",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-5",
-      "summary": "Blurred chat during Focus mode (messages visible but unreadable), chat unlocks during Break",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-6",
-      "summary": "Pre-session study goal declaration, goal visible during session, mark complete/incomplete at end",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-7",
-      "summary": "XP system: earn XP for completing sessions and goals, lose XP for leaving mid-session, private in-room leaderboard",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-8",
-      "summary": "Instant Rejoin: if user closes tab or app crashes, they re-enter the same room automatically without re-typing the code",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-9",
-      "summary": "Auto Session Resume: if host disconnects, the server-side timer keeps running independently — authority belongs to time, not a person",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-10",
-      "summary": "Ambient Study Sounds: optional toggle for rain, library noise, and low white noise during focus sessions",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-11",
-      "summary": "Distraction Lock Indicator: small yellow warning dot appears if user switches tabs for too long during focus phase",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-12",
-      "summary": "Smooth Micro-Animations: timer shrinking circle, soft glow when session starts",
+      "summary": "After each focus session, show a non-intrusive golden card icon in the corner. Clicking it triggers a scratch animation revealing a shuffled gratitude/motivational message (e.g. 'Learning is rizq', 'Rabbi zidni ilma', etc.). Messages cycle through a predefined list, shuffled per session.",
       "reqIds": [],
       "status": "pending"
     }

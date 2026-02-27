@@ -5,11 +5,10 @@ import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import List "mo:core/List";
+import Int "mo:core/Int";
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
-
-// This with-clause applies the data migration function in migration.mo
 
 actor {
   type Event = {
@@ -52,6 +51,23 @@ actor {
     username : Text;
   };
 
+  public type Signal = {
+    from : Principal;
+    to : Principal;
+    signalType : SignalType;
+    payload : Text;
+  };
+
+  public type SignalType = {
+    #offer;
+    #answer;
+    #iceCandidate;
+  };
+
+  public type SignalResponse = {
+    data : [Signal];
+  };
+
   // Authorization
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -60,6 +76,9 @@ actor {
   let userProfiles = Map.empty<Principal, UserProfile>();
   let events = Map.empty<UniqueCode, Event>();
   let roomsReverseIndex = Map.empty<UniqueCode, RoomId>();
+
+  // Map<RoomId, Map<Recipient, List<Signal>>>
+  let roomToRecipientToPendingSignals = Map.empty<RoomId, Map.Map<Principal, List.List<Signal>>>();
 
   let joinedRoomsList = List.empty<RoomId>();
   let burntRoomsList = List.empty<RoomId>();
@@ -100,8 +119,12 @@ actor {
       creator = caller;
     };
 
+    let recipientMap = Map.empty<Principal, List.List<Signal>>();
     rooms.add(code, roomState);
     roomsReverseIndex.add(code, code);
+
+    roomToRecipientToPendingSignals.add(code, recipientMap);
+
     code;
   };
 
@@ -137,14 +160,15 @@ actor {
   };
 
   public query ({ caller }) func getTimerState(code : Text) : async ?Session {
-    // Timer state is now accessible to anyone in the room, not just the host.
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get timer state");
+    };
     switch (rooms.get(code)) {
       case (null) { null };
       case (?state) { state.session };
     };
   };
 
-  // --- Category/Navigation Functions ---
   public query ({ caller }) func getCurrentCategory() : async ?RoomId {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can access room navigation");
@@ -195,6 +219,106 @@ actor {
     let uniqueCode = generateUniqueCode();
     events.add(uniqueCode, event);
     uniqueCode;
+  };
+
+  // --- WebRTC Signaling Functions ---
+
+  // Caller must be a registered user. The `from` field is forced to `caller`
+  // to prevent identity spoofing.
+  public shared ({ caller }) func sendSignal(roomId : Text, recipient : Principal, signalType : SignalType, payload : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can send signals");
+    };
+
+    let recipientMap = switch (roomToRecipientToPendingSignals.get(roomId)) {
+      case (null) { Runtime.trap("Room not found") };
+      case (?map) { map };
+    };
+
+    // Verify caller is a participant in the room
+    let roomState = switch (rooms.get(roomId)) {
+      case (null) { Runtime.trap("Room not found") };
+      case (?state) { state };
+    };
+    if (not roomState.participants.contains(caller)) {
+      Runtime.trap("Unauthorized: Caller is not a participant in this room");
+    };
+
+    let signal : Signal = {
+      from = caller; // enforce sender identity
+      to = recipient;
+      signalType;
+      payload;
+    };
+
+    let signalList = switch (recipientMap.get(recipient)) {
+      case (null) { List.empty<Signal>() };
+      case (?existingList) { existingList };
+    };
+
+    signalList.add(signal);
+    recipientMap.add(recipient, signalList);
+  };
+
+  public query ({ caller }) func receiveSignals(roomId : Text) : async SignalResponse {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can receive signals");
+    };
+
+    switch (roomToRecipientToPendingSignals.get(roomId)) {
+      case (null) { Runtime.trap("Room not found") };
+      case (?recipientMap) {
+        let signalsList = switch (recipientMap.get(caller)) {
+          case (null) { List.empty<Signal>() };
+          case (?existingList) { existingList };
+        };
+        {
+          data = signalsList.toArray();
+        };
+      };
+    };
+  };
+
+  public shared ({ caller }) func clearSignals(roomId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can clear signals");
+    };
+
+    switch (roomToRecipientToPendingSignals.get(roomId)) {
+      case (null) {
+        Runtime.trap("Room not found");
+      };
+      case (?recipientMap) {
+        // Only clear the caller's own signal queue
+        recipientMap.add(caller, List.empty<Signal>());
+      };
+    };
+  };
+
+  public query ({ caller }) func getRoomParticipants(roomId : Text) : async [(Principal, Text)] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view room participants");
+    };
+
+    let roomState = switch (rooms.get(roomId)) {
+      case (null) { Runtime.trap("Room not found") };
+      case (?state) { state };
+    };
+
+    // Only participants in the room or admins may view the participant list
+    if (not roomState.participants.contains(caller) and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only room participants can view the participant list");
+    };
+
+    roomState.participants.toArray().map(
+      func(principal) {
+        let username = switch (userProfiles.get(principal)) {
+          case (null) { "" };
+          case (?profile) { profile.username };
+        };
+        (principal, username);
+      }
+    );
   };
 
   // --- Helper Functions ---

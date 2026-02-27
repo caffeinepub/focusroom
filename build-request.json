@@ -1,43 +1,82 @@
 {
   "kind": "build_request",
-  "title": "Fix camera permission popup not triggering in CameraPreview",
-  "priority": "high",
+  "title": "Add post-session gratitude scratch card feature",
+  "projectName": "FocusRoom",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-19",
-      "text": "Completely replace the camera toggle handler in `frontend/src/components/room/CameraPreview.tsx`. The new implementation must: (1) attach an onClick handler directly on the toggle button that — synchronously and without any awaited pre-checks — calls `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` as the very first asynchronous operation, ensuring the browser native permission popup is triggered; (2) stop all tracks on any existing stream before requesting a new one; (3) on success, assign the stream to the video element ref (`videoRef.current.srcObject = stream`) and call `videoRef.current.play()`; (4) on failure, set an error state and render the message 'Camera access was denied. Please allow camera access when the browser prompt appears and try again.'; (5) apply a permanent inline CSS blur filter (`filter: 'blur(12px) brightness(0.8) contrast(1.2)'`) to the `<video>` element at all times — never remove or toggle it; (6) stop all tracks and nullify the stream on component unmount. Strip out every prior attempt's code: no `enumerateDevices`, no device-ID constraints, no resolution constraints, no feature-detection guards, no try/catch blocks wrapping the `getUserMedia` call itself before the call is made.",
+      "id": "REQ-1",
+      "text": "After each focus session ends (before the break phase begins), display a small golden card icon in a corner of the screen that does not interrupt or overlap the timer display and does not block any interactive UI elements.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-latest"
+          "msg-3"
         ],
         "quotes": [
-          "It didnt ask for permission"
+          "a golden card icon appears quietly in the corner. It doesn't interrupt the timer. It doesn't block the screen."
         ]
       },
       "acceptanceCriteria": [
-        "Clicking the camera toggle button immediately triggers the browser's native permission popup without any delay or silent failure.",
-        "No `enumerateDevices()` call or any other async operation precedes the `getUserMedia` call in the handler.",
-        "On permission grant, the live video feed is displayed inside the component with a permanent CSS blur applied.",
-        "The blur filter on the video element is never removed or toggled off under any condition.",
-        "On permission denial or any other error, a human-readable error message is shown to the user in the UI.",
-        "On component unmount, all media stream tracks are stopped and the stream reference is cleared.",
-        "No legacy code paths (enumerateDevices, deviceId constraints, overconstrained retries) remain in the file."
+        "The golden card icon appears only after a focus session completes, not during focus or break phases.",
+        "The icon is positioned in a corner (e.g., bottom-right) and is non-blocking — it does not cover the timer, chat, or other interactive controls.",
+        "The icon is visually styled in gold tones to draw subtle attention without demanding it.",
+        "The icon persists until the user clicks it or the next session starts."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Implement a scratch card animation on the golden card icon when the user clicks it. The card expands or reveals a surface that the user appears to 'scratch off', progressively uncovering a short motivational/gratitude message beneath.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-3"
+        ],
+        "quotes": [
+          "If the user clicks it, a scratch animation reveals a short message"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Clicking the golden card icon triggers a scratch-reveal animation (e.g., canvas-based scratch effect or CSS animation that wipes/reveals content).",
+        "The animation feels satisfying and smooth — it should feel like scratching off a surface to reveal text underneath.",
+        "The message is hidden until the scratch animation completes or the user scrapes enough of the surface."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Maintain a predefined list of seven gratitude/motivational messages and display exactly one message per focus session, cycling through the list in a shuffled order. After all seven messages have been shown, reshuffle the list and repeat. The messages are: 'Many want to study but cannot afford internet. Thank your Lord.', 'Many are praying for opportunity. You are inside it. Alhamdulillah.', 'Not everyone gets time, access, and ability together. You do. Thank your Lord.', 'Learning is rizq.', 'You are in a position many wish for.', 'Some want education but doors were closed. Yours are open. Thank your creator.', 'Rabbi zidni ilma — My Lord, increase me in knowledge.'",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-3"
+        ],
+        "quotes": [
+          "Use Any one of these for every session. Then shuffle it for the another session"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Exactly one message from the list is shown per completed focus session.",
+        "Messages are presented in a shuffled (randomized) order across sessions.",
+        "Once all seven messages have been shown, the list reshuffles and cycles again — no message repeats until all others have been shown.",
+        "The shuffle state persists across page reloads using localStorage so the sequence is not reset on refresh.",
+        "All seven messages appear verbatim as specified."
       ]
     }
   ],
   "constraints": [
-    "Do not modify any files listed in frontend.immutablePaths.",
-    "Do not introduce any async operations (e.g. enumerateDevices, feature detection) before the getUserMedia call in the toggle handler.",
-    "The CSS blur on the video element must be permanent and must never be conditionally removed."
+    "The golden card icon must not interrupt or overlap the timer display.",
+    "The card must not block any interactive screen elements.",
+    "Message content must remain exactly as specified — do not alter wording."
   ],
   "nonGoals": [
-    "Changing any other component beyond CameraPreview.tsx.",
-    "Adding audio capture or changing audio constraints.",
-    "Modifying the backend."
+    "Backend storage of message history or shuffle state — localStorage is sufficient.",
+    "User-configurable message list.",
+    "Showing the card during the break or idle phases.",
+    "Any network requests related to the gratitude card."
   ],
   "imageRequirements": {
-    "required": [],
+    "required": [
+      "A small golden card icon with a shiny, embossed star or sparkle motif on a rich gold gradient background, square format (gold-card-icon.dim_128x128.png)"
+    ],
     "edits": []
   }
 }

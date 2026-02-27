@@ -2,10 +2,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useGetCallerUserProfile } from '../hooks/useGetCallerUserProfile';
-import { useTimerState, useStartSession } from '../hooks/useQueries';
+import { useTimerState, useStartSession, useGetRoomParticipants } from '../hooks/useQueries';
+import { useWebRTC } from '../hooks/useWebRTC';
+import { useGratitudeMessages } from '../hooks/useGratitudeMessages';
 import { Phase } from '../backend';
 import TimerDisplay from '../components/room/TimerDisplay';
 import CameraPreview from '../components/room/CameraPreview';
+import VideoGrid from '../components/room/VideoGrid';
 import ChatPanel from '../components/room/ChatPanel';
 import GoalEntryModal from '../components/room/GoalEntryModal';
 import GoalDisplay from '../components/room/GoalDisplay';
@@ -14,6 +17,7 @@ import LeaderboardPanel from '../components/room/LeaderboardPanel';
 import ParticipantList from '../components/room/ParticipantList';
 import AmbientSoundToggle from '../components/room/AmbientSoundToggle';
 import DistractionLockIndicator from '../components/room/DistractionLockIndicator';
+import GratitudeCard from '../components/room/GratitudeCard';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -53,12 +57,35 @@ export default function RoomPage() {
   const { data: timerSession, isLoading: timerLoading } = useTimerState(code);
   const { mutate: startSession, isPending: isStarting } = useStartSession();
 
+  // Participants from backend
+  const { data: participants = [] } = useGetRoomParticipants(code);
+
+  const localPrincipal = identity?.getPrincipal().toString() ?? '';
+
+  // Local camera stream state (lifted up from CameraPreview)
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const isCameraActive = localStream !== null;
+
+  // WebRTC hook for peer-to-peer video
+  const { remoteStreams } = useWebRTC({
+    roomId: code,
+    localStream,
+    isEnabled: isCameraActive,
+    participants,
+    localPrincipal,
+  });
+
   const [copied, setCopied] = useState(false);
   const [currentGoal, setCurrentGoal] = useState<string | null>(null);
   const [showGoalEntry, setShowGoalEntry] = useState(false);
   const [showGoalCompletion, setShowGoalCompletion] = useState(false);
   const [goalSubmitted, setGoalSubmitted] = useState(false);
   const [xpMap, setXpMap] = useState<Record<string, number>>({});
+
+  // Gratitude card state
+  const { getNextMessage } = useGratitudeMessages();
+  const [gratitudeMessage, setGratitudeMessage] = useState<string | null>(null);
+  const gratitudeShownRef = useRef(false);
 
   // Local countdown state
   const [displayTime, setDisplayTime] = useState({ minutes: 25, seconds: 0 });
@@ -130,15 +157,25 @@ export default function RoomPage() {
         setGoalSubmitted(false);
         setShowGoalEntry(true);
         setShowGoalCompletion(false);
+        // Hide gratitude card when a new focus session starts
+        setGratitudeMessage(null);
+        gratitudeShownRef.current = false;
       } else if (currentPhase === Phase.pause && prevPhase === Phase.focus) {
-        // Focus ended → break started: show completion prompt
+        // Focus ended → break started: show completion prompt + gratitude card
         setShowGoalCompletion(true);
         setShowGoalEntry(false);
+
+        // Show gratitude card (only once per transition)
+        if (!gratitudeShownRef.current) {
+          gratitudeShownRef.current = true;
+          const msg = getNextMessage();
+          setGratitudeMessage(msg);
+        }
       }
     }
 
     prevPhaseRef.current = currentPhase;
-  }, [currentPhase, timerSession?.startTime]);
+  }, [currentPhase, timerSession?.startTime, getNextMessage]);
 
   // Auto-transition: when timer hits 0, start next phase (any participant can advance)
   useEffect(() => {
@@ -222,6 +259,14 @@ export default function RoomPage() {
       {/* Distraction Lock Indicator */}
       <DistractionLockIndicator phase={currentPhase} />
 
+      {/* Gratitude Card — appears after focus session, non-blocking corner icon */}
+      {gratitudeMessage && (
+        <GratitudeCard
+          message={gratitudeMessage}
+          onDismiss={() => setGratitudeMessage(null)}
+        />
+      )}
+
       {/* Room Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-room-border bg-room-surface/50">
         <button
@@ -250,8 +295,8 @@ export default function RoomPage() {
 
       {/* Main Room Layout */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-        {/* Left Column: Timer + Camera + Goal */}
-        <div className="flex flex-col gap-4 p-4 lg:w-72 xl:w-80 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-room-border">
+        {/* Left Column: Timer + Camera + Video Grid + Goal + Participants */}
+        <div className="flex flex-col gap-4 p-4 lg:w-72 xl:w-80 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-room-border overflow-y-auto">
           {/* Timer */}
           <TimerDisplay
             phase={currentPhase}
@@ -268,13 +313,26 @@ export default function RoomPage() {
             <GoalDisplay goal={currentGoal} />
           )}
 
-          {/* Camera */}
-          <CameraPreview username={userProfile?.username ?? 'You'} />
+          {/* Local Camera Preview */}
+          <CameraPreview
+            username={userProfile?.username ?? 'You'}
+            onStreamChange={setLocalStream}
+          />
+
+          {/* Video Grid: local + remote streams */}
+          <VideoGrid
+            localStream={localStream}
+            localUsername={userProfile?.username ?? 'You'}
+            remoteStreams={remoteStreams}
+          />
 
           {/* Participants */}
           <ParticipantList
             roomCode={code}
             currentUsername={userProfile?.username ?? ''}
+            localPrincipal={localPrincipal}
+            localCameraActive={isCameraActive}
+            remoteStreams={remoteStreams}
           />
         </div>
 

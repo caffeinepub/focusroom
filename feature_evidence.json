@@ -2,10 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-completely-replace-the-camera-toggle-handler-in-frontend-src-components-room-camerapreview-tsx-the-new-implementation-must-1-attach-an-onclick-handler-directly-on-the-toggle-button-that-synchronously-and-without-any-awaited-pre-checks-calls-navigator-mediadevices-getusermedia-video-true-audio-false-as-the-very-first-asynchronous-operation-ensuring-the-browser-native-permission-popup-is-triggered-2-stop-all-tracks-on-any-existing-stream-before-requesting-a-new-one-3-on-success-assign-the-stream-to-the-video-element-ref-videoref-current-srcobject-stream-and-call-videoref-current-play-4-on-failure-set-an-error-state-and-render-the-message-camera-access-was-denied-please-allow-camera-access-when-the-browser-prompt-appears-and-try-again-5-apply-a-permanent-inline-css-blur-filter-filter-blur-12px-brightness-0-8-contrast-1-2-to-the-video-element-at-all-times-never-remove-or-toggle-it-6-stop-all-tracks-and-nullify-the-stream-on-component-unmount-strip-out-every-prior-attempt-s-code-no-enumeratedevices-no-device-id-constraints-no-resolution-constraints-no-feature-detection-guards-no-try-catch-blocks-wrapping-the-getusermedia-call-itself-before-the-call-is-made",
-      "featureTitle": "Completely replace the camera toggle handler in `frontend/src/components/room/CameraPreview.tsx`. The new implementation must: (1) attach an onClick handler directly on the toggle button that — synchronously and without any awaited pre-checks — calls `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` as the very first asynchronous operation, ensuring the browser native permission popup is triggered; (2) stop all tracks on any existing stream before requesting a new one; (3) on success, assign the stream to the video element ref (`videoRef.current.srcObject = stream`) and call `videoRef.current.play()`; (4) on failure, set an error state and render the message 'Camera access was denied. Please allow camera access when the browser prompt appears and try again.'; (5) apply a permanent inline CSS blur filter (`filter: 'blur(12px) brightness(0.8) contrast(1.2)'`) to the `<video>` element at all times — never remove or toggle it; (6) stop all tracks and nullify the stream on component unmount. Strip out every prior attempt's code: no `enumerateDevices`, no device-ID constraints, no resolution constraints, no feature-detection guards, no try/catch blocks wrapping the `getUserMedia` call itself before the call is made.",
+      "featureId": "feature-after-each-focus-session-ends-before-the-break-phase-begins-display-a-small-golden-card-icon-in-a-corner-of-the-screen-that-does-not-interrupt-or-overlap-the-timer-display-and-does-not-block-any-interactive-ui-elements",
+      "featureTitle": "After each focus session ends (before the break phase begins), display a small golden card icon in a corner of the screen that does not interrupt or overlap the timer display and does not block any interactive UI elements.",
       "files": [
-        "frontend/src/components/room/CameraPreview.tsx"
+        "frontend/src/components/room/GratitudeCard.tsx",
+        "frontend/src/pages/RoomPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -17,7 +18,49 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-19"
+        "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-implement-a-scratch-card-animation-on-the-golden-card-icon-when-the-user-clicks-it-the-card-expands-or-reveals-a-surface-that-the-user-appears-to-scratch-off-progressively-uncovering-a-short-motivational-gratitude-message-beneath",
+      "featureTitle": "Implement a scratch card animation on the golden card icon when the user clicks it. The card expands or reveals a surface that the user appears to 'scratch off', progressively uncovering a short motivational/gratitude message beneath.",
+      "files": [
+        "frontend/src/components/room/GratitudeCard.tsx",
+        "frontend/src/components/room/ScratchCardOverlay.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "camera@1.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-maintain-a-predefined-list-of-seven-gratitude-motivational-messages-and-display-exactly-one-message-per-focus-session-cycling-through-the-list-in-a-shuffled-order-after-all-seven-messages-have-been-shown-reshuffle-the-list-and-repeat-the-messages-are-many-want-to-study-but-cannot-afford-internet-thank-your-lord-many-are-praying-for-opportunity-you-are-inside-it-alhamdulillah-not-everyone-gets-time-access-and-ability-together-you-do-thank-your-lord-learning-is-rizq-you-are-in-a-position-many-wish-for-some-want-education-but-doors-were-closed-yours-are-open-thank-your-creator-rabbi-zidni-ilma-my-lord-increase-me-in-knowledge",
+      "featureTitle": "Maintain a predefined list of seven gratitude/motivational messages and display exactly one message per focus session, cycling through the list in a shuffled order. After all seven messages have been shown, reshuffle the list and repeat. The messages are: 'Many want to study but cannot afford internet. Thank your Lord.', 'Many are praying for opportunity. You are inside it. Alhamdulillah.', 'Not everyone gets time, access, and ability together. You do. Thank your Lord.', 'Learning is rizq.', 'You are in a position many wish for.', 'Some want education but doors were closed. Yours are open. Thank your creator.', 'Rabbi zidni ilma — My Lord, increase me in knowledge.'",
+      "files": [
+        "frontend/src/hooks/useGratitudeMessages.ts",
+        "frontend/src/pages/RoomPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "camera@1.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
       ],
       "confidence": "high"
     }

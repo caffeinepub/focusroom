@@ -18,6 +18,16 @@ export interface Session {
   'isPause' : boolean,
   'phase' : Phase,
 }
+export interface Signal {
+  'to' : Principal,
+  'from' : Principal,
+  'payload' : string,
+  'signalType' : SignalType,
+}
+export interface SignalResponse { 'data' : Array<Signal> }
+export type SignalType = { 'iceCandidate' : null } |
+  { 'offer' : null } |
+  { 'answer' : null };
 export type Time = bigint;
 export type UniqueCode = string;
 export interface UserProfile { 'username' : string }
@@ -27,17 +37,24 @@ export type UserRole = { 'admin' : null } |
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'clearSignals' : ActorMethod<[string], undefined>,
   'createRoom' : ActorMethod<[], string>,
   'getBurntCategories' : ActorMethod<[], Array<RoomId>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCurrentCategory' : ActorMethod<[], [] | [RoomId]>,
   'getPreviousCategories' : ActorMethod<[], Array<RoomId>>,
+  'getRoomParticipants' : ActorMethod<[string], Array<[Principal, string]>>,
   'getTimerState' : ActorMethod<[string], [] | [Session]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'joinRoom' : ActorMethod<[string], undefined>,
+  'receiveSignals' : ActorMethod<[string], SignalResponse>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'sendSignal' : ActorMethod<
+    [string, Principal, SignalType, string],
+    undefined
+  >,
   'startSession' : ActorMethod<[string, Phase], undefined>,
   'storeEvent' : ActorMethod<[string, [] | [Phase], Time], UniqueCode>,
 }

@@ -1,31 +1,18 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T20:51:32.964Z",
-  "summary": "The diff modifies CameraPreview.tsx with a new camera toggle implementation. Most REQ-19 requirements are implemented: getUserMedia is called as the first async operation, tracks are stopped, stream is assigned to videoRef and play() is called, error messages are shown, and tracks are stopped on unmount. However, there are deviations: tracks are stopped AFTER getting the new stream rather than before, and setCameraState('requesting') is called before startCamera() in the handler. The blur filter and legacy code removal cannot be fully verified due to truncation.",
-  "missing_requirements": [
-    {
-      "id": "REQ-19",
-      "requirement": "Stop all tracks on any existing stream BEFORE requesting a new one.",
-      "reason": "In startCamera(), the code calls getUserMedia first and only calls stopStreamTracks() after obtaining the new stream. The requirement explicitly states to stop existing tracks before requesting a new one.",
-      "evidence": [
-        "frontend/src/components/room/CameraPreview.tsx"
-      ]
-    }
-  ],
-  "hallucinated_features": [
-    {
-      "description": "Multiple distinct error messages for NotFoundError, NotReadableError, AbortError, TrackStartError, DevicesNotFoundError beyond the single permission denial message.",
-      "reason": "REQ-19 specifies one error message for permission denial and a generic error state for other failures. The implementation adds specific hardware-not-found and camera-in-use error messages not requested.",
-      "evidence": [
-        "frontend/src/components/room/CameraPreview.tsx"
-      ]
-    }
-  ],
-  "confidence": 0.65,
+  "generatedAt": "2026-02-26T14:06:38.383Z",
+  "summary": "The diff implements all three requirements: REQ-1 (golden card icon in corner after focus session), REQ-2 (canvas-based scratch card animation), and REQ-3 (seven shuffled gratitude messages with localStorage persistence). All seven messages appear verbatim in the hook. The GratitudeCard component is positioned fixed bottom-right at z-40, non-blocking. The ScratchCardOverlay uses a canvas-based scratch mechanic with a 55% reveal threshold. The useGratitudeMessages hook implements Fisher-Yates shuffle with localStorage persistence. Integration in RoomPage.tsx shows the card on focus-to-break transition and hides it on new session or dismissal.",
+  "missing_requirements": [],
+  "hallucinated_features": [],
+  "confidence": 0.93,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/components/room/CameraPreview.tsx",
+    "frontend/src/components/room/GratitudeCard.tsx",
+    "frontend/src/components/room/ScratchCardOverlay.tsx",
+    "frontend/src/hooks/useGratitudeMessages.ts",
+    "frontend/src/index.css",
+    "frontend/src/pages/RoomPage.tsx",
     "project_state.json"
   ]
 }

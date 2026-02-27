@@ -1,25 +1,71 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix camera permission popup not triggering in CameraPreview",
+  "title": "Add post-session gratitude scratch card feature",
   "requirements": [
     {
-      "id": "REQ-19",
-      "summary": "Replace the camera toggle handler in CameraPreview.tsx to trigger the browser's native permission popup immediately on button click, without any pre-checks or device enumeration, and apply a permanent CSS blur filter to the video element.",
+      "id": "REQ-1",
+      "summary": "Display a golden card icon in the corner after each focus session ends, positioned to avoid blocking the timer or interactive UI elements",
       "acceptanceCriteria": [
-        "Clicking the camera toggle button immediately triggers the browser's native permission popup without any delay or silent failure.",
-        "No `enumerateDevices()` call or any other async operation precedes the `getUserMedia` call in the handler.",
-        "On permission grant, the live video feed is displayed inside the component with a permanent CSS blur applied.",
-        "The blur filter on the video element is never removed or toggled off under any condition.",
-        "On permission denial or any other error, a human-readable error message is shown to the user in the UI.",
-        "On component unmount, all media stream tracks are stopped and the stream reference is cleared.",
-        "No legacy code paths (enumerateDevices, deviceId constraints, overconstrained retries) remain in the file."
+        "The golden card icon appears only after a focus session completes, not during focus or break phases.",
+        "The icon is positioned in a corner (e.g., bottom-right) and is non-blocking — it does not cover the timer, chat, or other interactive controls.",
+        "The icon is visually styled in gold tones to draw subtle attention without demanding it.",
+        "The icon persists until the user clicks it or the next session starts."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/room/CameraPreview.tsx",
+          "path": "frontend/src/components/room/GratitudeCard.tsx",
+          "operation": "create",
+          "description": "Create a new GratitudeCard component that displays a golden card icon in a non-blocking corner position. The component should accept props for visibility state (shown only after focus session ends), onClick handler to trigger the scratch animation, and current timer phase. Position the icon in the bottom-right corner using fixed positioning with appropriate spacing from edges. Use the generated image at frontend/public/assets/generated/gold-card-icon.dim_128x128.png as the card icon. Apply gold/amber styling to make it visually appealing but subtle."
+        },
+        {
+          "path": "frontend/src/pages/RoomPage.tsx",
           "operation": "modify",
-          "description": "Completely replace the camera toggle handler implementation: (1) Remove all existing device enumeration, feature detection, and constraint logic; (2) Attach an onClick handler directly on the toggle button that synchronously calls `navigator.mediaDevices.getUserMedia({ video: true, audio: false })` as the very first asynchronous operation to ensure the browser permission popup is triggered immediately; (3) Stop all tracks on any existing stream before requesting a new one; (4) On success, assign the stream to `videoRef.current.srcObject` and call `videoRef.current.play()`; (5) On failure, set an error state and display the message 'Camera access was denied. Please allow camera access when the browser prompt appears and try again.' in the UI; (6) Apply a permanent inline CSS blur filter (`filter: 'blur(12px) brightness(0.8) contrast(1.2)'`) to the `<video>` element at all times—never remove or toggle it; (7) Stop all tracks and nullify the stream on component unmount. Strip out all prior code including enumerateDevices calls, deviceId constraints, resolution constraints, feature-detection guards, and any try/catch blocks wrapping getUserMedia before the call is made."
+          "description": "Wire the GratitudeCard component into RoomPage. Add state to track whether the card should be shown (set to true when a focus session completes, false when clicked or new session starts). Pass the current timer phase and visibility state to GratitudeCard. Position the component so it does not overlap with the timer display, chat panel, or other interactive elements. Ensure the card appears immediately after the focus phase ends but before the break phase begins."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Implement a scratch-off animation that reveals a motivational message when the user clicks the golden card icon",
+      "acceptanceCriteria": [
+        "Clicking the golden card icon triggers a scratch-reveal animation (e.g., canvas-based scratch effect or CSS animation that wipes/reveals content).",
+        "The animation feels satisfying and smooth — it should feel like scratching off a surface to reveal text underneath.",
+        "The message is hidden until the scratch animation completes or the user scrapes enough of the surface."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/room/ScratchCardOverlay.tsx",
+          "operation": "create",
+          "description": "Create a ScratchCardOverlay component that implements a canvas-based scratch-off animation. When mounted, expand the card to fill a modal/overlay, display a scratchable canvas surface over the message text, and allow the user to reveal the message by mouse/touch interaction. Track the percentage of surface scratched and auto-reveal the message when a threshold (e.g., 60%) is reached. Use smooth canvas rendering for the scratch effect with gold/metallic gradient as the scratch layer. Accept props for the message text to reveal and an onClose callback."
+        },
+        {
+          "path": "frontend/src/components/room/GratitudeCard.tsx",
+          "operation": "modify",
+          "description": "Add state to track whether the scratch overlay is open. When the golden card icon is clicked, trigger the opening of the ScratchCardOverlay component with the current session's message. Pass a callback to close the overlay and hide the card icon after the message is revealed or dismissed."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Maintain a predefined list of seven gratitude messages, display one per session in shuffled order, and persist shuffle state across page reloads using localStorage",
+      "acceptanceCriteria": [
+        "Exactly one message from the list is shown per completed focus session.",
+        "Messages are presented in a shuffled (randomized) order across sessions.",
+        "Once all seven messages have been shown, the list reshuffles and cycles again — no message repeats until all others have been shown.",
+        "The shuffle state persists across page reloads using localStorage so the sequence is not reset on refresh.",
+        "All seven messages appear verbatim as specified."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useGratitudeMessages.ts",
+          "operation": "create",
+          "description": "Create a custom React hook useGratitudeMessages that manages the seven predefined gratitude messages. Store the messages as a constant array with the exact text: 'Many want to study but cannot afford internet. Thank your Lord.', 'Many are praying for opportunity. You are inside it. Alhamdulillah.', 'Not everyone gets time, access, and ability together. You do. Thank your Lord.', 'Learning is rizq.', 'You are in a position many wish for.', 'Some want education but doors were closed. Yours are open. Thank your creator.', 'Rabbi zidni ilma — My Lord, increase me in knowledge.' Implement shuffle logic using Fisher-Yates algorithm. Persist the shuffled queue and current index to localStorage under a key like 'gratitude-messages-state'. On mount, restore state from localStorage or initialize with a new shuffle. Expose a getNextMessage() function that returns the next message in the queue, advances the index, and reshuffles when all messages have been shown. Also expose the current message for display."
+        },
+        {
+          "path": "frontend/src/pages/RoomPage.tsx",
+          "operation": "modify",
+          "description": "Integrate the useGratitudeMessages hook into RoomPage. When a focus session completes, call getNextMessage() to retrieve the message for this session. Pass the current message to the GratitudeCard component so it can display it in the scratch overlay. Ensure the message is fetched only once per completed focus session and not on every render."
         }
       ]
     }

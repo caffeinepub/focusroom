@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
 import { Phase, type Session } from '../backend';
+import type { Principal } from '@dfinity/principal';
 
 const LAST_ROOM_KEY = 'focusroom_last_room';
 
@@ -102,5 +103,23 @@ export function useStoreEvent() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['messages', variables.roomCode] });
     },
+  });
+}
+
+// ─── Participants ─────────────────────────────────────────────────────────────
+
+export function useGetRoomParticipants(roomId: string) {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<Array<[Principal, string]>>({
+    queryKey: ['roomParticipants', roomId],
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await actor.getRoomParticipants(roomId);
+      return result as Array<[Principal, string]>;
+    },
+    enabled: !!actor && !actorFetching && !!roomId,
+    refetchInterval: 4000,
+    staleTime: 0,
   });
 }

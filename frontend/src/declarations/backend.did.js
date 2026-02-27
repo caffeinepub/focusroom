@@ -22,17 +22,35 @@ export const Session = IDL.Record({
   'isPause' : IDL.Bool,
   'phase' : Phase,
 });
+export const SignalType = IDL.Variant({
+  'iceCandidate' : IDL.Null,
+  'offer' : IDL.Null,
+  'answer' : IDL.Null,
+});
+export const Signal = IDL.Record({
+  'to' : IDL.Principal,
+  'from' : IDL.Principal,
+  'payload' : IDL.Text,
+  'signalType' : SignalType,
+});
+export const SignalResponse = IDL.Record({ 'data' : IDL.Vec(Signal) });
 export const UniqueCode = IDL.Text;
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'clearSignals' : IDL.Func([IDL.Text], [], []),
   'createRoom' : IDL.Func([], [IDL.Text], []),
   'getBurntCategories' : IDL.Func([], [IDL.Vec(RoomId)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCurrentCategory' : IDL.Func([], [IDL.Opt(RoomId)], ['query']),
   'getPreviousCategories' : IDL.Func([], [IDL.Vec(RoomId)], ['query']),
+  'getRoomParticipants' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Text))],
+      ['query'],
+    ),
   'getTimerState' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -41,7 +59,13 @@ export const idlService = IDL.Service({
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'joinRoom' : IDL.Func([IDL.Text], [], []),
+  'receiveSignals' : IDL.Func([IDL.Text], [SignalResponse], ['query']),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'sendSignal' : IDL.Func(
+      [IDL.Text, IDL.Principal, SignalType, IDL.Text],
+      [],
+      [],
+    ),
   'startSession' : IDL.Func([IDL.Text, Phase], [], []),
   'storeEvent' : IDL.Func([IDL.Text, IDL.Opt(Phase), Time], [UniqueCode], []),
 });
@@ -63,17 +87,35 @@ export const idlFactory = ({ IDL }) => {
     'isPause' : IDL.Bool,
     'phase' : Phase,
   });
+  const SignalType = IDL.Variant({
+    'iceCandidate' : IDL.Null,
+    'offer' : IDL.Null,
+    'answer' : IDL.Null,
+  });
+  const Signal = IDL.Record({
+    'to' : IDL.Principal,
+    'from' : IDL.Principal,
+    'payload' : IDL.Text,
+    'signalType' : SignalType,
+  });
+  const SignalResponse = IDL.Record({ 'data' : IDL.Vec(Signal) });
   const UniqueCode = IDL.Text;
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'clearSignals' : IDL.Func([IDL.Text], [], []),
     'createRoom' : IDL.Func([], [IDL.Text], []),
     'getBurntCategories' : IDL.Func([], [IDL.Vec(RoomId)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCurrentCategory' : IDL.Func([], [IDL.Opt(RoomId)], ['query']),
     'getPreviousCategories' : IDL.Func([], [IDL.Vec(RoomId)], ['query']),
+    'getRoomParticipants' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Text))],
+        ['query'],
+      ),
     'getTimerState' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
@@ -82,7 +124,13 @@ export const idlFactory = ({ IDL }) => {
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'joinRoom' : IDL.Func([IDL.Text], [], []),
+    'receiveSignals' : IDL.Func([IDL.Text], [SignalResponse], ['query']),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'sendSignal' : IDL.Func(
+        [IDL.Text, IDL.Principal, SignalType, IDL.Text],
+        [],
+        [],
+      ),
     'startSession' : IDL.Func([IDL.Text, Phase], [], []),
     'storeEvent' : IDL.Func([IDL.Text, IDL.Opt(Phase), Time], [UniqueCode], []),
   });

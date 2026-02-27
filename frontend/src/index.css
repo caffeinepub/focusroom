@@ -176,3 +176,14 @@
     transform: scale(1.2);
   }
 }
+
+@keyframes gratitude-ring-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
